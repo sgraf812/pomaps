@@ -13,7 +13,7 @@ benchmarks:
     - -with-rtsopts=-N
     main: Main.hs
     source-dirs: benchmark
-category: Other
+category: Data Structures
 description: Maps and sets indexed by a partial order
 extra-source-files:
 - CHANGELOG.md
