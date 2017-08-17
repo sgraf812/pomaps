@@ -8,3 +8,5 @@ This package tries to load off as much work as possible to the excellent [`conta
 
 A rather naive implementation leads to `O(w*n*log n)` lookups, where `w` is the width of the decomposition (which should be the size of the biggest anti-chain).
 This is enough for me at the moment to get things going, but there is room for improvement ([Sorting and Selection in Posets](https://arxiv.org/abs/0707.1532)).
+
+[pomaps]: https://github.com/sgraf812/pomaps
