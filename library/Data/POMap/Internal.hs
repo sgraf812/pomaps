@@ -14,9 +14,10 @@ import           Control.Arrow      (first, second, (&&&), (***))
 import qualified Data.List          as List
 import           Data.Map.Internal  (AreWeStrict (..), Map (..))
 import qualified Data.Map.Internal  as Map
-import           Data.Maybe         (fromMaybe)
+import           Data.Maybe         (fromMaybe, isJust)
 import qualified Data.Maybe         as Maybe
 import           Data.Monoid        (Alt (..), Any (..))
+import           Debug.Trace
 import           GHC.Exts           (Proxy#, inline, proxy#)
 import qualified GHC.Exts
 import           GHC.Magic          (oneShot)
@@ -90,6 +91,9 @@ size :: POMap k v -> Int
 size (POMap s _) = s
 {-# INLINE size #-}
 
+width :: POMap k v -> Int
+width = length . chainDecomposition
+{-# INLINE width #-}
 
 foldEntry :: (Monoid m, PartialOrd k) => k -> (v -> m) -> POMap k v -> m
 foldEntry !k !f = foldMap find . chainDecomposition
@@ -138,36 +142,71 @@ containsOrdering EQ LessThan     = False
 containsOrdering EQ GreaterThan  = False
 containsOrdering EQ _            = True
 
+comparePartial :: PartialOrd k => k -> k -> Maybe Ordering
+comparePartial a b =
+  case (a `leq` b, b `leq` a) of
+    (True, True)   -> Just EQ
+    (True, False)  -> Just LT
+    (False, True)  -> Just GT
+    (False, False) -> Nothing
+{-# INLINE comparePartial #-}
+
+addToAntichain :: PartialOrd k => RelationalOperator -> (k, v) -> [(k, v)] -> [(k, v)]
+addToAntichain !op entry@(k, _) chain = maybe chain (entry:) (foldr weedOut (Just []) chain)
+  where
+    weedOut e'@(k', _) mayChain' =
+      case comparePartial k k' of
+        Just LT
+          | containsOrdering GT op -> mayChain' -- don't need e'
+          | containsOrdering LT op -> Nothing
+        Just GT
+          | containsOrdering GT op -> Nothing
+          | containsOrdering LT op -> mayChain' -- don't need e'
+        Just EQ -> Nothing -- should never happen
+        _ -> (e' :) <$> mayChain' -- still need e'
+{-# INLINE addToAntichain #-}
+
 -- If inlined, this optimizes to the equivalent hand-written variants.
 lookupX :: PartialOrd k => RelationalOperator -> k -> POMap k v -> [(k, v)]
-lookupX !op !k = Maybe.mapMaybe findNothing . chainDecomposition
+lookupX !op !k
+  = foldr (addToAntichain op) []
+  . Maybe.mapMaybe findNothing
+  . chainDecomposition
   where
     findNothing Tip = Nothing
     findNothing (Bin _ k' v' l r) =
-      case (k `leq` k', k' `leq` k) of
-        (True, True)
+      case comparePartial k k' of
+        Just EQ
           | containsOrdering EQ op -> Just (k', v')
-          | otherwise -> Nothing
-        (True, False)
+          | containsOrdering GT op -> findNothing r
+          | containsOrdering LT op -> findNothing l
+          | otherwise -> error "lookupX.findNothing: inexhaustive match"
+        Just LT
           | containsOrdering GT op -> findJust l k' v'
           | otherwise -> findNothing l
-        (False, True)
+        Just GT
           | containsOrdering LT op -> findJust r k' v'
           | otherwise -> findNothing r
-        (False, False) -> Nothing
+        Nothing -- Incomparable, only the min or max element might not be
+          | containsOrdering LT op -> findNothing l
+          | containsOrdering GT op -> findNothing r
+          | otherwise -> Nothing
     findJust Tip k'' v'' = Just (k'', v'')
     findJust (Bin _ k' v' l r) k'' v'' =
-      case (k `leq` k', k' `leq` k) of
-        (True, True)
+      case comparePartial k k' of
+        Just EQ
           | containsOrdering EQ op -> Just (k', v')
-          | otherwise -> Just (k'', v'')
-        (True, False)
+          | containsOrdering GT op -> findJust r k'' v''
+          | containsOrdering LT op -> findJust l k'' v''
+          | otherwise -> error "lookupX.findJust: inexhaustive match"
+        Just LT
+          | containsOrdering GT op -> findJust l k' v'
           | containsOrdering GT op -> findJust l k' v'
           | otherwise -> findJust l k'' v''
-        (False, True)
+        Just GT
           | containsOrdering LT op -> findJust r k' v'
           | otherwise -> findJust r k'' v''
-        (False, False) -> Just (k'', v'')
+        Nothing -> Just (k'', v'')
 {-# INLINE lookupX #-}
 
 lookupLT :: PartialOrd k => k -> POMap k v -> [(k, v)]
@@ -347,7 +386,10 @@ alterWithKey s f k = mkPOMap . overChains handleChain oldWon newWon incomparable
     handleChain = alterChain s f k
     oldWon chain chains' = chain : chains'
     newWon chain' chains = chain' : chains
-    incomparable decomp = decomp
+    incomparable decomp =
+      case f k Nothing of
+        Nothing -> decomp
+        Just v  -> Map.singleton k v : decomp
 {-# INLINABLE alterWithKey #-}
 {-# SPECIALIZE alterWithKey :: PartialOrd k => Proxy# 'Strict -> (k -> Maybe v -> Maybe v) -> k -> POMap k v -> POMap k v #-}
 {-# SPECIALIZE alterWithKey :: PartialOrd k => Proxy# 'Lazy -> (k -> Maybe v -> Maybe v) -> k -> POMap k v -> POMap k v #-}
@@ -382,7 +424,10 @@ alterLookupWithKey s f !k
     handleChain = alterLookupChain s f k
     oldWon chain (v, chains') = (v, chain : chains')
     newWon (v', chain') chains = (v', chain' : chains)
-    incomparable decomp = (Nothing, decomp)
+    incomparable decomp =
+      case f k Nothing of
+        Nothing -> (Nothing, decomp)
+        Just v  -> (Just v, Map.singleton k v : decomp)
 {-# INLINABLE alterLookupWithKey #-}
 {-# SPECIALIZE alterLookupWithKey :: PartialOrd k => Proxy# 'Strict -> (k -> Maybe v -> Maybe v) -> k -> POMap k v -> (Maybe v, POMap k v) #-}
 {-# SPECIALIZE alterLookupWithKey :: PartialOrd k => Proxy# 'Lazy -> (k -> Maybe v -> Maybe v) -> k -> POMap k v -> (Maybe v, POMap k v) #-}

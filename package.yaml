@@ -39,8 +39,10 @@ tests:
     dependencies:
     - base
     - pomaps
+    - lattices >= 1.6.0
     - tasty
     - tasty-hspec
+    - tasty-quickcheck
     ghc-options:
     - -rtsopts
     - -threaded
