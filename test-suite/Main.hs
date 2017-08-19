@@ -9,10 +9,5 @@ import           Test.Tasty.Hspec
 
 main :: IO ()
 main = do
-    test <- testSpec "pomaps" Data.POMap.Properties.spec
+    test <- testSpec "pomaps" (parallel Data.POMap.Properties.spec)
     Test.Tasty.defaultMain test
-
-spec :: Spec
-spec = parallel $ do
-    it "is trivially true" $ do
-        True `shouldBe` True

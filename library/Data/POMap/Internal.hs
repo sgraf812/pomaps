@@ -425,9 +425,9 @@ alterLookupWithKey s f !k
     oldWon chain (v, chains') = (v, chain : chains')
     newWon (v', chain') chains = (v', chain' : chains)
     incomparable decomp =
-      case f k Nothing of
-        Nothing -> (Nothing, decomp)
-        Just v  -> (Just v, Map.singleton k v : decomp)
+      (Nothing, case f k Nothing of
+        Nothing -> decomp
+        Just v  -> Map.singleton k v : decomp)
 {-# INLINABLE alterLookupWithKey #-}
 {-# SPECIALIZE alterLookupWithKey :: PartialOrd k => Proxy# 'Strict -> (k -> Maybe v -> Maybe v) -> k -> POMap k v -> (Maybe v, POMap k v) #-}
 {-# SPECIALIZE alterLookupWithKey :: PartialOrd k => Proxy# 'Lazy -> (k -> Maybe v -> Maybe v) -> k -> POMap k v -> (Maybe v, POMap k v) #-}
