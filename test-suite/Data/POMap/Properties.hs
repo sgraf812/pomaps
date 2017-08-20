@@ -1,9 +1,12 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Data.POMap.Properties where
 
 import           Algebra.PartialOrd
 import           Control.Arrow           ((&&&))
 import           Control.Monad           (guard)
 import           Data.Function           (on)
+import           Data.Functor.Const
+import           Data.Functor.Identity
 import           Data.List               (sortBy)
 import           Data.Ord                (comparing)
 import           Data.POMap.Arbitrary    ()
@@ -107,11 +110,10 @@ spec =
       lookupXProps "greater than" lookupGT $ \a b ->
         a `leq` b && not (b `leq` a)
 
-    -- `insert` should already be tested thoroughly because of `fromList`
     describe "insert" $
       it "overwrites an entry" $
-        property $ \m k v ->
-          lookup (k :: Divisibility) (insert k v m) `shouldBe` Just (v :: Int)
+        property $ \(m :: POMap Divisibility Int) k v ->
+          lookup k (insert k v m) `shouldBe` Just v
     describe "insertWithKey" $ do
       it "can access old value" $
         insertWithKey (\_ _ old -> old) 1 2 div100 `shouldBePOMap` div100
@@ -126,3 +128,66 @@ spec =
       it "lookup &&& insertWithKey" $
         property $ \m k v ->
           insertLookupWithKey f k v m `shouldBe` (lookup k m, insertWithKey f k v m)
+
+    describe "delete" $
+      it "deletes" $ property $ \(m :: POMap Divisibility Int) k ->
+        lookup k (delete k m) `shouldBe` Nothing
+    describe "deleteLookup" $
+      it "lookup &&& delete" $ property $ \(m :: POMap Divisibility Int) k ->
+        deleteLookup k m `shouldBe` (lookup k m, delete k m)
+
+    describe "adjust" $ do
+      let f old = old + 1
+      it "adjusts" $ property $ \(m :: POMap Divisibility Int) k ->
+        lookup k (adjust f k m) `shouldBe` (+1) <$> lookup k m
+    describe "adjustWithKey" $ do
+      let f k old = unDiv k + old + 1
+      it "passes the key" $ property $ \(m :: POMap Divisibility Integer) k ->
+        lookup k (adjustWithKey f k m) `shouldBe` (unDiv k + 1 +) <$> lookup k m
+    describe "adjustLookupWithKey" $ do
+      let f k old = unDiv k + old + 1
+      it "lookup &&& adjustWithKey" $ property $ \(m :: POMap Divisibility Integer) k ->
+        adjustLookupWithKey f k m `shouldBe` (lookup k m, adjustWithKey f k m)
+
+    describe "update" $ do
+      it "Nothing deletes" $ property $ \(m :: POMap Divisibility Int) k ->
+        lookup k (update (const Nothing) k m) `shouldBe` Nothing
+      let f old = old + 1
+      it "Just adjusts" $ property $ \(m :: POMap Divisibility Int) k ->
+        lookup k (update (Just . f) k m) `shouldBe` lookup k (adjust f k m)
+    describe "updateWithKey" $ do
+      let f k old = Just (unDiv k + old + 1)
+      it "passes the key" $ property $ \(m :: POMap Divisibility Integer) k ->
+        lookup k (updateWithKey f k m) `shouldBe` (unDiv k + 1 +) <$> lookup k m
+    describe "updateLookupWithKey" $ do
+      let f k old = Just (unDiv k + old + 1)
+      it "lookup &&& updateWithKey" $ property $ \(m :: POMap Divisibility Integer) k ->
+        updateLookupWithKey f k m `shouldBe` (lookup k m, updateWithKey f k m)
+
+    describe "alter" $ do
+      let fJust _ = Just 4
+      it "const Just inserts" $ property $ \(m :: POMap Divisibility Int) k ->
+        lookup k (alter fJust k m) `shouldBe` lookup k (insert k 4 m)
+      let f old = Just (old + 1)
+      it "(>>=) updates" $ property $ \(m :: POMap Divisibility Int) k ->
+        lookup k (alter (>>= f) k m) `shouldBe` lookup k (update f k m)
+    describe "alterWithKey" $ do
+      let f old = (+1) <$> old
+      it "const f alters" $ property $ \(m :: POMap Divisibility Int) k ->
+        lookup k (alterWithKey (const f) k m) `shouldBe` lookup k (alter f k m)
+      let g k old = Just (unDiv k + old + 1)
+      let g' k old = old >>= g k
+      it "(>>=) updates" $ property $ \(m :: POMap Divisibility Integer) k ->
+        lookup k (alterWithKey g' k m) `shouldBe` lookup k (updateWithKey g k m)
+    describe "alterLookupWithKey" $ do
+      let f k Nothing  = Just (unDiv k + 1)
+          f _ (Just _) = Nothing
+      it "lookup &&& alterWithKey" $ property $ \(m :: POMap Divisibility Integer) k ->
+        alterLookupWithKey f k m `shouldBe` (lookup k m, alterWithKey f k m)
+    describe "alterF" $ do
+      it "Const looks up" $ property $ \(m :: POMap Divisibility Integer) k ->
+        getConst (alterF Const k m) `shouldBe` lookup k m
+      let f _ = Identity (Just 4)
+      it "Identity inserts" $ property $ \(m :: POMap Divisibility Integer) k ->
+        lookup k (runIdentity (alterF f k m)) `shouldBe` lookup k (insert k 4 m)
+
