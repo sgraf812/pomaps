@@ -7,7 +7,7 @@ import           Control.Monad           (guard)
 import           Data.Function           (on)
 import           Data.Functor.Const
 import           Data.Functor.Identity
-import           Data.List               (sortBy)
+import           Data.List               (find, sortBy)
 import           Data.Ord                (comparing)
 import           Data.POMap.Arbitrary    ()
 import           Data.POMap.Divisibility
@@ -191,3 +191,39 @@ spec =
       it "Identity inserts" $ property $ \(m :: POMap Divisibility Integer) k ->
         lookup k (runIdentity (alterF f k m)) `shouldBe` lookup k (insert k 4 m)
 
+    describe "union" $ do
+      it "domain" $ property $ \(m1 :: POMap Divisibility Integer) m2 k ->
+        (member k m1 || member k m2) === member k (union m1 m2)
+      it "left bias" $ property $ \(m1 :: POMap Divisibility Integer) m2 k ->
+        (member k m1 && member k m2) ==> lookup k (union m1 m2) === lookup k m1
+    describe "unionWith" $ do
+      let left l _ = l
+      it "union == unionWith left" $ property $ \(m1 :: POMap Divisibility Integer) m2 k ->
+        lookup k (union m1 m2) === lookup k (unionWith left m1 m2)
+      let right _ r = r
+      it "can have right bias" $ property $ \(m1 :: POMap Divisibility Integer) m2 k ->
+        (member k m1 && member k m2) ==> lookup k (unionWith right m1 m2) === lookup k m2
+    describe "unionWithKey" $ do
+      let left l _ = l
+      it "unionWith f == unionWithKey (const f)" $ property $ \(m1 :: POMap Divisibility Integer) m2 k ->
+        lookup k (unionWith left m1 m2) === lookup k (unionWithKey (const left) m1 m2)
+      let merge k l r = unDiv k + l + r
+      it "can access key" $ property $ \(m1 :: POMap Divisibility Integer) m2 k ->
+        (member k m1 && member k m2) ==>
+          lookup k (unionWithKey merge m1 m2) === (merge k <$> lookup k m1 <*> lookup k m2)
+    describe "unions" $ do
+      it "domain" $
+        forAll (vectorOf 10 arbitrary) $ \(ms :: [POMap Divisibility Integer]) k ->
+          any (member k) ms === member k (unions ms)
+      it "left bias" $
+        forAll (vectorOf 10 arbitrary) $ \(ms :: [POMap Divisibility Integer]) k ->
+          lookup k (unions ms) === (find (member k) ms >>= lookup k)
+    describe "unionsWith" $ do
+      let left l _ = l
+      it "unions = unionsWith left" $
+        forAll (vectorOf 5 arbitrary) $ \(ms :: [POMap Divisibility Integer]) k ->
+          any (member k) ms === member k (unionsWith left ms)
+      let right _ r = r
+      it "can have right bias" $
+        forAll (vectorOf 5 arbitrary) $ \(ms :: [POMap Divisibility Integer]) k ->
+          lookup k (unionsWith right ms) === (find (member k) (reverse ms) >>= lookup k)

@@ -61,6 +61,7 @@
 - ignore: # This happens in top-level RULE pragmas, a bug in hlint
     name: Use map once
     within: Data.POMap.Internal
+- ignore: {name: Use infix}
 
 
 # Define some custom infix operators
