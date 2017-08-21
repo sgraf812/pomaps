@@ -16,13 +16,15 @@ import           Prelude                 hiding (lookup, max, null)
 import           Test.Tasty.Hspec
 import           Test.Tasty.QuickCheck
 
-div' :: Int -> POMap Divisibility Integer
+type DivMap v = POMap Divisibility v
+
+div' :: Int -> DivMap Integer
 div' = fromList . divisibility
 
-div100 :: POMap Divisibility Integer
+div100 :: DivMap Integer
 div100 = div' 100
 
-div1000 :: POMap Divisibility Integer
+div1000 :: DivMap Integer
 div1000 = div' 1000
 
 primes :: [Integer]
@@ -39,7 +41,7 @@ makeEntries = fmap (Div &&& id)
 shouldBeSameEntries :: [(Divisibility, Integer)] -> [(Divisibility, Integer)] -> Expectation
 shouldBeSameEntries = shouldBe `on` sortBy (comparing (unDiv . fst))
 
-shouldBePOMap :: POMap Divisibility Integer -> POMap Divisibility Integer -> Expectation
+shouldBePOMap :: DivMap Integer -> DivMap Integer -> Expectation
 shouldBePOMap a b = toList a `shouldBeSameEntries` toList b
 
 spec :: Spec
@@ -112,7 +114,7 @@ spec =
 
     describe "insert" $
       it "overwrites an entry" $
-        property $ \(m :: POMap Divisibility Int) k v ->
+        property $ \(m :: DivMap Int) k v ->
           lookup k (insert k v m) `shouldBe` Just v
     describe "insertWithKey" $ do
       it "can access old value" $
@@ -130,100 +132,129 @@ spec =
           insertLookupWithKey f k v m `shouldBe` (lookup k m, insertWithKey f k v m)
 
     describe "delete" $
-      it "deletes" $ property $ \(m :: POMap Divisibility Int) k ->
+      it "deletes" $ property $ \(m :: DivMap Int) k ->
         lookup k (delete k m) `shouldBe` Nothing
     describe "deleteLookup" $
-      it "lookup &&& delete" $ property $ \(m :: POMap Divisibility Int) k ->
+      it "lookup &&& delete" $ property $ \(m :: DivMap Int) k ->
         deleteLookup k m `shouldBe` (lookup k m, delete k m)
 
     describe "adjust" $ do
       let f old = old + 1
-      it "adjusts" $ property $ \(m :: POMap Divisibility Int) k ->
+      it "adjusts" $ property $ \(m :: DivMap Int) k ->
         lookup k (adjust f k m) `shouldBe` (+1) <$> lookup k m
     describe "adjustWithKey" $ do
       let f k old = unDiv k + old + 1
-      it "passes the key" $ property $ \(m :: POMap Divisibility Integer) k ->
+      it "passes the key" $ property $ \(m :: DivMap Integer) k ->
         lookup k (adjustWithKey f k m) `shouldBe` (unDiv k + 1 +) <$> lookup k m
     describe "adjustLookupWithKey" $ do
       let f k old = unDiv k + old + 1
-      it "lookup &&& adjustWithKey" $ property $ \(m :: POMap Divisibility Integer) k ->
+      it "lookup &&& adjustWithKey" $ property $ \(m :: DivMap Integer) k ->
         adjustLookupWithKey f k m `shouldBe` (lookup k m, adjustWithKey f k m)
 
     describe "update" $ do
-      it "Nothing deletes" $ property $ \(m :: POMap Divisibility Int) k ->
+      it "Nothing deletes" $ property $ \(m :: DivMap Int) k ->
         lookup k (update (const Nothing) k m) `shouldBe` Nothing
       let f old = old + 1
-      it "Just adjusts" $ property $ \(m :: POMap Divisibility Int) k ->
+      it "Just adjusts" $ property $ \(m :: DivMap Int) k ->
         lookup k (update (Just . f) k m) `shouldBe` lookup k (adjust f k m)
     describe "updateWithKey" $ do
       let f k old = Just (unDiv k + old + 1)
-      it "passes the key" $ property $ \(m :: POMap Divisibility Integer) k ->
+      it "passes the key" $ property $ \(m :: DivMap Integer) k ->
         lookup k (updateWithKey f k m) `shouldBe` (unDiv k + 1 +) <$> lookup k m
     describe "updateLookupWithKey" $ do
       let f k old = Just (unDiv k + old + 1)
-      it "lookup &&& updateWithKey" $ property $ \(m :: POMap Divisibility Integer) k ->
+      it "lookup &&& updateWithKey" $ property $ \(m :: DivMap Integer) k ->
         updateLookupWithKey f k m `shouldBe` (lookup k m, updateWithKey f k m)
 
     describe "alter" $ do
       let fJust _ = Just 4
-      it "const Just inserts" $ property $ \(m :: POMap Divisibility Int) k ->
+      it "const Just inserts" $ property $ \(m :: DivMap Int) k ->
         lookup k (alter fJust k m) `shouldBe` lookup k (insert k 4 m)
       let f old = Just (old + 1)
-      it "(>>=) updates" $ property $ \(m :: POMap Divisibility Int) k ->
+      it "(>>=) updates" $ property $ \(m :: DivMap Int) k ->
         lookup k (alter (>>= f) k m) `shouldBe` lookup k (update f k m)
     describe "alterWithKey" $ do
       let f old = (+1) <$> old
-      it "const f alters" $ property $ \(m :: POMap Divisibility Int) k ->
+      it "const f alters" $ property $ \(m :: DivMap Int) k ->
         lookup k (alterWithKey (const f) k m) `shouldBe` lookup k (alter f k m)
       let g k old = Just (unDiv k + old + 1)
       let g' k old = old >>= g k
-      it "(>>=) updates" $ property $ \(m :: POMap Divisibility Integer) k ->
+      it "(>>=) updates" $ property $ \(m :: DivMap Integer) k ->
         lookup k (alterWithKey g' k m) `shouldBe` lookup k (updateWithKey g k m)
     describe "alterLookupWithKey" $ do
       let f k Nothing  = Just (unDiv k + 1)
           f _ (Just _) = Nothing
-      it "lookup &&& alterWithKey" $ property $ \(m :: POMap Divisibility Integer) k ->
+      it "lookup &&& alterWithKey" $ property $ \(m :: DivMap Integer) k ->
         alterLookupWithKey f k m `shouldBe` (lookup k m, alterWithKey f k m)
     describe "alterF" $ do
-      it "Const looks up" $ property $ \(m :: POMap Divisibility Integer) k ->
+      it "Const looks up" $ property $ \(m :: DivMap Integer) k ->
         getConst (alterF Const k m) `shouldBe` lookup k m
       let f _ = Identity (Just 4)
-      it "Identity inserts" $ property $ \(m :: POMap Divisibility Integer) k ->
+      it "Identity inserts" $ property $ \(m :: DivMap Integer) k ->
         lookup k (runIdentity (alterF f k m)) `shouldBe` lookup k (insert k 4 m)
 
     describe "union" $ do
-      it "domain" $ property $ \(m1 :: POMap Divisibility Integer) m2 k ->
+      it "domain" $ property $ \(m1 :: DivMap Integer) m2 k ->
         (member k m1 || member k m2) === member k (union m1 m2)
-      it "left bias" $ property $ \(m1 :: POMap Divisibility Integer) m2 k ->
+      it "left bias" $ property $ \(m1 :: DivMap Integer) m2 k ->
         (member k m1 && member k m2) ==> lookup k (union m1 m2) === lookup k m1
     describe "unionWith" $ do
       let left l _ = l
-      it "union == unionWith left" $ property $ \(m1 :: POMap Divisibility Integer) m2 k ->
+      it "union == unionWith left" $ property $ \(m1 :: DivMap Integer) m2 k ->
         lookup k (union m1 m2) === lookup k (unionWith left m1 m2)
       let right _ r = r
-      it "can have right bias" $ property $ \(m1 :: POMap Divisibility Integer) m2 k ->
+      it "can have right bias" $ property $ \(m1 :: DivMap Integer) m2 k ->
         (member k m1 && member k m2) ==> lookup k (unionWith right m1 m2) === lookup k m2
     describe "unionWithKey" $ do
       let left l _ = l
-      it "unionWith f == unionWithKey (const f)" $ property $ \(m1 :: POMap Divisibility Integer) m2 k ->
+      it "unionWith f == unionWithKey (const f)" $ property $ \(m1 :: DivMap Integer) m2 k ->
         lookup k (unionWith left m1 m2) === lookup k (unionWithKey (const left) m1 m2)
       let merge k l r = unDiv k + l + r
-      it "can access key" $ property $ \(m1 :: POMap Divisibility Integer) m2 k ->
+      it "can access key" $ property $ \(m1 :: DivMap Integer) m2 k ->
         (member k m1 && member k m2) ==>
           lookup k (unionWithKey merge m1 m2) === (merge k <$> lookup k m1 <*> lookup k m2)
     describe "unions" $ do
       it "domain" $
-        forAll (vectorOf 10 arbitrary) $ \(ms :: [POMap Divisibility Integer]) k ->
+        forAll (vectorOf 10 arbitrary) $ \(ms :: [DivMap Integer]) k ->
           any (member k) ms === member k (unions ms)
       it "left bias" $
-        forAll (vectorOf 10 arbitrary) $ \(ms :: [POMap Divisibility Integer]) k ->
+        forAll (vectorOf 10 arbitrary) $ \(ms :: [DivMap Integer]) k ->
           lookup k (unions ms) === (find (member k) ms >>= lookup k)
     describe "unionsWith" $ do
       let left l _ = l
       it "unions = unionsWith left" $
-        forAll (vectorOf 5 arbitrary) $ \(ms :: [POMap Divisibility Integer]) k ->
+        forAll (vectorOf 5 arbitrary) $ \(ms :: [DivMap Integer]) k ->
           any (member k) ms === member k (unionsWith left ms)
       let right _ r = r
       it "can have right bias" $
-        forAll (vectorOf 5 arbitrary) $ \(ms :: [POMap Divisibility Integer]) k ->
+        forAll (vectorOf 5 arbitrary) $ \(ms :: [DivMap Integer]) k ->
           lookup k (unionsWith right ms) === (find (member k) (reverse ms) >>= lookup k)
+
+    describe "difference" $
+      it "domain" $ property $ \(m1 :: DivMap Integer) (m2 :: DivMap ()) k ->
+        (member k m1 && member k (difference m1 m2)) ==> not (member k m2)
+    describe "differenceWith" $ do
+      it "difference = differenceWith (\\_ _ -> Nothing)" $ property $ \(m1 :: DivMap Integer) (m2 :: DivMap ()) k ->
+        lookup k (difference m1 m2) === lookup k (differenceWith (\_ _ -> Nothing) m1 m2)
+      it "m = differenceWith (\\l _ -> Just l) m _" $ property $ \(m1 :: DivMap Integer) (m2 :: DivMap ()) k ->
+        lookup k m1 === lookup k (differenceWith (\l _ -> Just l) m1 m2)
+    describe "differenceWithKey" $ do
+      let f l r = Just (l + r)
+      it "differenceWith f = differenceWithKey (const f)" $ property $ \(m1 :: DivMap Int) (m2 :: DivMap Int) k ->
+        lookup k (differenceWith f m1 m2) === lookup k (differenceWithKey (const f) m1 m2)
+
+    describe "intersection" $
+      it "domain" $ property $ \(m1 :: DivMap Integer) (m2 :: DivMap ()) k ->
+        (member k m1 && member k m2) === member k (intersection m1 m2)
+    describe "intersectionWith" $ do
+      let left l r = l
+      it "intersection = intersectionWith left" $ property $ \(m1 :: DivMap Integer) (m2 :: DivMap ()) k ->
+        lookup k (intersection m1 m2) === lookup k (intersectionWith left m1 m2)
+    describe "intersectionWithKey" $ do
+      let f = (+)
+      it "intersectionWith f = intersectionWithKey f" $ property $ \(m1 :: DivMap Int) (m2 :: DivMap Int) k ->
+        lookup k (intersectionWith f m1 m2) === lookup k (intersectionWithKey (const f) m1 m2)
+      let merge k l r = unDiv k + l + r
+      it "can access key" $ property $ \(m1 :: DivMap Integer) m2 k ->
+        (member k m1 && member k m2) ==>
+          lookup k (intersectionWithKey merge m1 m2) === (merge k <$> lookup k m1 <*> lookup k m2)

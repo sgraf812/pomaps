@@ -14,7 +14,7 @@ import           Control.Arrow      (first, second, (&&&), (***))
 import qualified Data.List          as List
 import           Data.Map.Internal  (AreWeStrict (..), Map (..))
 import qualified Data.Map.Internal  as Map
-import           Data.Maybe         (fromMaybe, isJust)
+import           Data.Maybe         (fromMaybe)
 import qualified Data.Maybe         as Maybe
 import           Data.Monoid        (Alt (..), Any (..))
 import           Debug.Trace
@@ -562,7 +562,7 @@ differenceWithKey f l
 
 -- ** Intersection
 
-intersection :: PartialOrd k => POMap k a -> POMap k a -> POMap k a
+intersection :: PartialOrd k => POMap k a -> POMap k b -> POMap k a
 intersection = inline intersectionWith const
 {-# INLINABLE intersection #-}
 
