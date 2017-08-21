@@ -8,11 +8,12 @@ import           Data.Function           (on)
 import           Data.Functor.Const
 import           Data.Functor.Identity
 import           Data.List               (find, sortBy)
+import           Data.Monoid             (Sum (..))
 import           Data.Ord                (comparing)
 import           Data.POMap.Arbitrary    ()
 import           Data.POMap.Divisibility
 import           Data.POMap.Lazy
-import           Prelude                 hiding (lookup, max, null)
+import           Prelude                 hiding (lookup, map, max, null)
 import           Test.Tasty.Hspec
 import           Test.Tasty.QuickCheck
 
@@ -38,10 +39,10 @@ primesUntil n = takeWhile (<= n) primes
 makeEntries :: [Integer] -> [(Divisibility, Integer)]
 makeEntries = fmap (Div &&& id)
 
-shouldBeSameEntries :: [(Divisibility, Integer)] -> [(Divisibility, Integer)] -> Expectation
+shouldBeSameEntries :: (Eq v, Show v) => [(Divisibility, v)] -> [(Divisibility, v)] -> Expectation
 shouldBeSameEntries = shouldBe `on` sortBy (comparing (unDiv . fst))
 
-shouldBePOMap :: DivMap Integer -> DivMap Integer -> Expectation
+shouldBePOMap :: (Eq v, Show v) => DivMap v -> DivMap v -> Expectation
 shouldBePOMap a b = toList a `shouldBeSameEntries` toList b
 
 spec :: Spec
@@ -258,3 +259,26 @@ spec =
       it "can access key" $ property $ \(m1 :: DivMap Integer) m2 k ->
         (member k m1 && member k m2) ==>
           lookup k (intersectionWithKey merge m1 m2) === (merge k <$> lookup k m1 <*> lookup k m2)
+
+    describe "fmap" $ do
+      it "fmap id = id" $ property $ \(m :: DivMap Int) ->
+        fmap id m `shouldBePOMap` m
+      it "fmaps over all entries" $ property $ \(m :: DivMap Int) k ->
+        lookup k (fmap (+1) m) `shouldBe` (+1) <$> lookup k m
+    describe "map" $ do
+      it "map id = id" $ property $ \(m :: DivMap Int) ->
+        map id m `shouldBePOMap` m
+      it "maps over all entries" $ property $ \(m :: DivMap Int) k ->
+        lookup k (map (+1) m) `shouldBe` (+1) <$> lookup k m
+    describe "mapWithKey" $ do
+      let f = (+1)
+      it "mapWithKey (const f) = map f" $ property $ \(m :: DivMap Int) ->
+        mapWithKey (const f) m `shouldBePOMap` map f m
+      let g k v = unDiv k + v
+      it "can access keys" $ property $ \(m :: DivMap Integer) k ->
+        lookup k (mapWithKey g m) `shouldBe` (unDiv k +) <$> lookup k m
+    describe "traverse" $ do
+      it "runIdentity . traverse Identity = id" $ property $ \(m :: DivMap Int) ->
+        runIdentity (traverse Identity m) `shouldBePOMap` m
+      it "traverse (const (Const (Sum 1))) = size" $ property $ \(m :: DivMap Int) ->
+        getSum (getConst (traverse (const (Const (Sum 1))) m)) `shouldBe` size m
