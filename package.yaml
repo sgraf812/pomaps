@@ -38,6 +38,7 @@ tests:
   pomaps-test-suite:
     dependencies:
     - base
+    - containers
     - pomaps
     - lattices >= 1.6.0
     - tasty

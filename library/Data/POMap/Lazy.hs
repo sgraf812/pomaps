@@ -6,7 +6,7 @@ module Data.POMap.Lazy (
     Impl.POMap
 
   -- * Query
-  , Impl.null
+  , null
   , Impl.size
   , Impl.width
   , Impl.member

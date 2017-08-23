@@ -1,23 +1,30 @@
+{-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Data.POMap.Properties where
 
 import           Algebra.PartialOrd
 import           Control.Arrow           ((&&&))
 import           Control.Monad           (guard)
+import           Data.Foldable           hiding (toList)
 import           Data.Function           (on)
 import           Data.Functor.Const
 import           Data.Functor.Identity
 import           Data.List               (find, sortBy)
-import           Data.Monoid             (Sum (..))
+import           Data.Monoid             (Dual (..), Endo (..), Sum (..))
 import           Data.Ord                (comparing)
 import           Data.POMap.Arbitrary    ()
 import           Data.POMap.Divisibility
 import           Data.POMap.Lazy
+import           GHC.Exts                (coerce)
 import           Prelude                 hiding (lookup, map, max, null)
 import           Test.Tasty.Hspec
 import           Test.Tasty.QuickCheck
 
 type DivMap v = POMap Divisibility v
+
+instance Eq v => Eq (DivMap v) where
+  (==) = (==) `on` sortBy (comparing (unDiv . fst)) . toList
 
 div' :: Int -> DivMap Integer
 div' = fromList . divisibility
@@ -41,9 +48,6 @@ makeEntries = fmap (Div &&& id)
 
 shouldBeSameEntries :: (Eq v, Show v) => [(Divisibility, v)] -> [(Divisibility, v)] -> Expectation
 shouldBeSameEntries = shouldBe `on` sortBy (comparing (unDiv . fst))
-
-shouldBePOMap :: (Eq v, Show v) => DivMap v -> DivMap v -> Expectation
-shouldBePOMap a b = toList a `shouldBeSameEntries` toList b
 
 spec :: Spec
 spec =
@@ -119,7 +123,7 @@ spec =
           lookup k (insert k v m) `shouldBe` Just v
     describe "insertWithKey" $ do
       it "can access old value" $
-        insertWithKey (\_ _ old -> old) 1 2 div100 `shouldBePOMap` div100
+        insertWithKey (\_ _ old -> old) 1 2 div100 `shouldBe` div100
       it "can access new value" $
         lookup 1 (insertWithKey (\_ new _ -> new) 1 2 div100) `shouldBe` Just 2
       it "can access key" $
@@ -248,7 +252,7 @@ spec =
       it "domain" $ property $ \(m1 :: DivMap Integer) (m2 :: DivMap ()) k ->
         (member k m1 && member k m2) === member k (intersection m1 m2)
     describe "intersectionWith" $ do
-      let left l r = l
+      let left l _ = l
       it "intersection = intersectionWith left" $ property $ \(m1 :: DivMap Integer) (m2 :: DivMap ()) k ->
         lookup k (intersection m1 m2) === lookup k (intersectionWith left m1 m2)
     describe "intersectionWithKey" $ do
@@ -260,25 +264,70 @@ spec =
         (member k m1 && member k m2) ==>
           lookup k (intersectionWithKey merge m1 m2) === (merge k <$> lookup k m1 <*> lookup k m2)
 
-    describe "fmap" $ do
-      it "fmap id = id" $ property $ \(m :: DivMap Int) ->
-        fmap id m `shouldBePOMap` m
-      it "fmaps over all entries" $ property $ \(m :: DivMap Int) k ->
-        lookup k (fmap (+1) m) `shouldBe` (+1) <$> lookup k m
+    describe "Functor" $
+      describe "fmap" $ do
+        it "fmap id = id" $ property $ \(m :: DivMap Int) ->
+          fmap id m `shouldBe` m
+        let f = (+1)
+        let g = (*2)
+        it "fmap f . fmap g = fmap (f . g)" $ property $ \(m :: DivMap Int) ->
+          fmap f (fmap g m) `shouldBe` fmap (f . g) m
+        it "fmaps over all entries" $ property $ \(m :: DivMap Int) k ->
+          lookup k (fmap (+1) m) `shouldBe` (+1) <$> lookup k m
+
+    describe "Foldable" $ do
+      describe "foldMap" $ do
+        it "getSum (foldMap (const (Sum 1))) = size" $ property $ \(m :: DivMap Int) ->
+          getSum (foldMap (const (Sum 1)) m) `shouldBe` size m
+        it "foldMap f = fold . fmap f" $ property $ \(m :: DivMap Int) ->
+          foldMap Sum m `shouldBe` fold (fmap Sum m)
+      describe "foldr" $ do
+        let f = (-)
+        let z = 9000
+        it "foldr f z m = appEndo (foldMap (Endo . f) m ) z" $ property $ \(m :: DivMap Int) ->
+          foldr f z m `shouldBe` appEndo (foldMap (Endo . f) m ) z
+      describe "foldl" $ do
+        let f = (-)
+        let z = 9000
+        it "foldl f z m = appEndo (getDual (foldMap (Dual . Endo . flip f) m)) z" $ property $ \(m :: DivMap Int) ->
+          foldl f z m `shouldBe` appEndo (getDual (foldMap (Dual . Endo . flip f) m)) z
+      describe "fold" $
+        it "fold = foldMap id" $ property $ \(m :: DivMap (Sum Int)) ->
+          fold m `shouldBe` foldMap id m
+
     describe "map" $ do
-      it "map id = id" $ property $ \(m :: DivMap Int) ->
-        map id m `shouldBePOMap` m
-      it "maps over all entries" $ property $ \(m :: DivMap Int) k ->
-        lookup k (map (+1) m) `shouldBe` (+1) <$> lookup k m
+      let f = (+1)
+      it "map = fmap" $ property $ \(m :: DivMap Int) ->
+        map f m `shouldBe` fmap f m
     describe "mapWithKey" $ do
       let f = (+1)
       it "mapWithKey (const f) = map f" $ property $ \(m :: DivMap Int) ->
-        mapWithKey (const f) m `shouldBePOMap` map f m
+        mapWithKey (const f) m `shouldBe` map f m
       let g k v = unDiv k + v
       it "can access keys" $ property $ \(m :: DivMap Integer) k ->
         lookup k (mapWithKey g m) `shouldBe` (unDiv k +) <$> lookup k m
     describe "traverse" $ do
       it "runIdentity . traverse Identity = id" $ property $ \(m :: DivMap Int) ->
-        runIdentity (traverse Identity m) `shouldBePOMap` m
+        runIdentity (traverse Identity m) `shouldBe` m
       it "traverse (const (Const (Sum 1))) = size" $ property $ \(m :: DivMap Int) ->
         getSum (getConst (traverse (const (Const (Sum 1))) m)) `shouldBe` size m
+    describe "traverseWithKey" $ do
+      let f old = Identity (old + 1)
+      it "traverseWithKey (const f) = traverse f" $ property $ \(m :: DivMap Int) ->
+        runIdentity (traverseWithKey (const f) m) `shouldBe` runIdentity (traverse f m)
+    describe "traverseMaybeWithKey" $ do
+      let f k old = Identity (unDiv k + old + 1)
+      it "traverseMaybeWithKey (\\k v -> Just <$> f k v) = traverseWithKey f" $ property $ \(m :: DivMap Integer) ->
+        runIdentity (traverseMaybeWithKey (\k v -> Just <$> f k v) m)
+          `shouldBe` runIdentity (traverseWithKey f m)
+    describe "mapAccum" $ do
+      let f a b = a + b
+      let g b = b + 1
+      it "fst . mapAccum (\\a b -> (f a b, b)) acc = foldr f acc" $ property $ \(m :: DivMap Integer) ->
+        fst (mapAccum (\a b -> (f a b, b)) 0 m) `shouldBe` foldr f 0 m
+      it "snd . mapAccum (\\a b -> (a, g b)) acc = map g" $ property $ \(m :: DivMap Integer) ->
+        snd (mapAccum (\_ b -> (b, g b)) 0 m) `shouldBe` map g m
+    describe "mapAccumWithKey" $ do
+      let f a b = (a + b, b + 1)
+      it "mapAccumWithKey (\\a _ b -> f a b) acc =  mapAccum f acc" $ property $ \(m :: DivMap Integer) ->
+        mapAccumWithKey (\a _ b -> f a b) 0 m `shouldBe` mapAccum f 0 m

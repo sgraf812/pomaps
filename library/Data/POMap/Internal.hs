@@ -41,7 +41,7 @@ seq' p a b
 
 data POMap k v
   = POMap !Int ![Map k v]
-  deriving (Eq, Show, Read) -- TODO: Implement these by hand
+  deriving (Show, Read) -- TODO: Implement these by hand
 
 
 mkPOMap :: [Map k v] -> POMap k v
@@ -68,6 +68,10 @@ instance Foldable (POMap k) where
   {-# INLINE foldl #-}
   foldMap f (POMap _ d) = foldMap (foldMap f) d
   {-# INLINE foldMap #-}
+  null m = size m == 0
+  {-# INLINE null #-}
+  length = size
+  {-# INLINE length #-}
 
 instance Traversable (POMap k) where
   traverse f = traverseWithKey (const f)
@@ -81,11 +85,6 @@ instance PartialOrd k => GHC.Exts.IsList (POMap k v) where
 --
 -- * Query
 --
-
-null :: POMap k v -> Bool
-null (POMap 0 _) = True
-null _           = False
-
 
 size :: POMap k v -> Int
 size (POMap s _) = s

@@ -6,7 +6,7 @@ module Data.POMap.Strict (
     Impl.POMap
 
   -- * Query
-  , Impl.null
+  , null
   , Impl.size
   , Impl.width
   , Impl.member
