@@ -8,9 +8,11 @@ import           Control.Arrow           ((&&&))
 import           Control.Monad           (guard)
 import           Data.Foldable           hiding (toList)
 import           Data.Function           (on)
+import           Data.Functor.Compose
 import           Data.Functor.Const
 import           Data.Functor.Identity
 import           Data.List               (find, sortBy)
+import           Data.Maybe              (listToMaybe)
 import           Data.Monoid             (Dual (..), Endo (..), Sum (..))
 import           Data.Ord                (comparing)
 import           Data.POMap.Arbitrary    ()
@@ -264,36 +266,6 @@ spec =
         (member k m1 && member k m2) ==>
           lookup k (intersectionWithKey merge m1 m2) === (merge k <$> lookup k m1 <*> lookup k m2)
 
-    describe "Functor" $
-      describe "fmap" $ do
-        it "fmap id = id" $ property $ \(m :: DivMap Int) ->
-          fmap id m `shouldBe` m
-        let f = (+1)
-        let g = (*2)
-        it "fmap f . fmap g = fmap (f . g)" $ property $ \(m :: DivMap Int) ->
-          fmap f (fmap g m) `shouldBe` fmap (f . g) m
-        it "fmaps over all entries" $ property $ \(m :: DivMap Int) k ->
-          lookup k (fmap (+1) m) `shouldBe` (+1) <$> lookup k m
-
-    describe "Foldable" $ do
-      describe "foldMap" $ do
-        it "getSum (foldMap (const (Sum 1))) = size" $ property $ \(m :: DivMap Int) ->
-          getSum (foldMap (const (Sum 1)) m) `shouldBe` size m
-        it "foldMap f = fold . fmap f" $ property $ \(m :: DivMap Int) ->
-          foldMap Sum m `shouldBe` fold (fmap Sum m)
-      describe "foldr" $ do
-        let f = (-)
-        let z = 9000
-        it "foldr f z m = appEndo (foldMap (Endo . f) m ) z" $ property $ \(m :: DivMap Int) ->
-          foldr f z m `shouldBe` appEndo (foldMap (Endo . f) m ) z
-      describe "foldl" $ do
-        let f = (-)
-        let z = 9000
-        it "foldl f z m = appEndo (getDual (foldMap (Dual . Endo . flip f) m)) z" $ property $ \(m :: DivMap Int) ->
-          foldl f z m `shouldBe` appEndo (getDual (foldMap (Dual . Endo . flip f) m)) z
-      describe "fold" $
-        it "fold = foldMap id" $ property $ \(m :: DivMap (Sum Int)) ->
-          fold m `shouldBe` foldMap id m
 
     describe "map" $ do
       let f = (+1)
@@ -306,11 +278,6 @@ spec =
       let g k v = unDiv k + v
       it "can access keys" $ property $ \(m :: DivMap Integer) k ->
         lookup k (mapWithKey g m) `shouldBe` (unDiv k +) <$> lookup k m
-    describe "traverse" $ do
-      it "runIdentity . traverse Identity = id" $ property $ \(m :: DivMap Int) ->
-        runIdentity (traverse Identity m) `shouldBe` m
-      it "traverse (const (Const (Sum 1))) = size" $ property $ \(m :: DivMap Int) ->
-        getSum (getConst (traverse (const (Const (Sum 1))) m)) `shouldBe` size m
     describe "traverseWithKey" $ do
       let f old = Identity (old + 1)
       it "traverseWithKey (const f) = traverse f" $ property $ \(m :: DivMap Int) ->
@@ -331,3 +298,57 @@ spec =
       let f a b = (a + b, b + 1)
       it "mapAccumWithKey (\\a _ b -> f a b) acc =  mapAccum f acc" $ property $ \(m :: DivMap Integer) ->
         mapAccumWithKey (\a _ b -> f a b) 0 m `shouldBe` mapAccum f 0 m
+
+    describe "type class instances" $ do
+      describe "Functor" $
+        describe "fmap" $ do
+          it "fmap id = id" $ property $ \(m :: DivMap Int) ->
+            fmap id m `shouldBe` m
+          let f = (+1)
+          let g = (*2)
+          it "fmap f . fmap g = fmap (f . g)" $ property $ \(m :: DivMap Int) ->
+            fmap f (fmap g m) `shouldBe` fmap (f . g) m
+          it "fmaps over all entries" $ property $ \(m :: DivMap Int) k ->
+            lookup k (fmap (+1) m) `shouldBe` (+1) <$> lookup k m
+
+      describe "Foldable" $ do
+        describe "foldMap" $ do
+          it "getSum (foldMap (const (Sum 1))) = size" $ property $ \(m :: DivMap Int) ->
+            getSum (foldMap (const (Sum 1)) m) `shouldBe` size m
+          it "foldMap f = fold . fmap f" $ property $ \(m :: DivMap Int) ->
+            foldMap Sum m `shouldBe` fold (fmap Sum m)
+        describe "foldr" $ do
+          let f = (-)
+          let z = 9000
+          it "foldr f z m = appEndo (foldMap (Endo . f) m ) z" $ property $ \(m :: DivMap Int) ->
+            foldr f z m `shouldBe` appEndo (foldMap (Endo . f) m ) z
+        describe "foldl" $ do
+          let f = (-)
+          let z = 9000
+          it "foldl f z m = appEndo (getDual (foldMap (Dual . Endo . flip f) m)) z" $ property $ \(m :: DivMap Int) ->
+            foldl f z m `shouldBe` appEndo (getDual (foldMap (Dual . Endo . flip f) m)) z
+        describe "fold" $
+          it "fold = foldMap id" $ property $ \(m :: DivMap (Sum Int)) ->
+            fold m `shouldBe` foldMap id m
+
+      describe "Traversable" $ do
+        describe "traverse" $ do
+          it "traverse (const (Const (Sum 1))) = size" $ property $ \(m :: DivMap Int) ->
+            getSum (getConst (traverse (const (Const (Sum 1))) m)) `shouldBe` size m
+          let f n = replicate (min 2 n) n
+          let g n = if odd n then Just n else Nothing
+          let t = listToMaybe
+          it "naturality" $ property $ \(m :: DivMap Int) ->
+            t (traverse f m) `shouldBe` traverse (t . f) m
+          it "identity" $ property $ \(m :: DivMap Int) ->
+            traverse Identity m `shouldBe` Identity m
+          it "composition" $ property $ \(m :: DivMap Int) ->
+            traverse (Compose . fmap g . f) m `shouldBe` (Compose . fmap (traverse g) . traverse f) m
+        describe "sequenceA" $ do
+          let t = listToMaybe
+          it "naturality" $ property $ \(m :: DivMap [Int]) ->
+            t (sequenceA m) `shouldBe` sequenceA (fmap t m)
+          it "identity" $ property $ \(m :: DivMap Int) ->
+            sequenceA (fmap Identity m) `shouldBe` Identity m
+          it "composition" $ property $ \(m :: DivMap (Maybe (Maybe Int))) ->
+            sequenceA (fmap Compose m) `shouldBe` (Compose . fmap sequenceA . sequenceA) m
