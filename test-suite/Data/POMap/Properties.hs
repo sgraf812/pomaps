@@ -4,9 +4,9 @@
 module Data.POMap.Properties where
 
 import           Algebra.PartialOrd
-import           Control.Arrow           ((&&&))
+import           Control.Arrow           (first, (&&&))
 import           Control.Monad           (guard)
-import           Data.Foldable           hiding (toList)
+import           Data.Foldable           hiding (foldl', foldr', toList)
 import           Data.Function           (on)
 import           Data.Functor.Compose
 import           Data.Functor.Const
@@ -18,6 +18,7 @@ import           Data.Ord                (comparing)
 import           Data.POMap.Arbitrary    ()
 import           Data.POMap.Divisibility
 import           Data.POMap.Lazy
+import           Data.Traversable
 import           GHC.Exts                (coerce)
 import           Prelude                 hiding (lookup, map, max, null)
 import           Test.Tasty.Hspec
@@ -266,7 +267,6 @@ spec =
         (member k m1 && member k m2) ==>
           lookup k (intersectionWithKey merge m1 m2) === (merge k <$> lookup k m1 <*> lookup k m2)
 
-
     describe "map" $ do
       let f = (+1)
       it "map = fmap" $ property $ \(m :: DivMap Int) ->
@@ -278,6 +278,31 @@ spec =
       let g k v = unDiv k + v
       it "can access keys" $ property $ \(m :: DivMap Integer) k ->
         lookup k (mapWithKey g m) `shouldBe` (unDiv k +) <$> lookup k m
+
+    describe "mapAccum" $ do
+      let f a b = a + b
+      let g b = b + 1
+      it "mapAccum (\\a b -> (f a b, g b)) acc = foldr f acc &&& map g" $ property $ \(m :: DivMap Integer) ->
+        mapAccum (\a b -> (f a b, g b)) 0 m `shouldBe` (foldr f 0 &&& map g) m
+    describe "mapAccumWithKey" $ do
+      let f a b = (a + b, b + 1)
+      it "mapAccumWithKey (\\a _ b -> f a b) acc =  mapAccum f acc" $ property $ \(m :: DivMap Integer) ->
+        mapAccumWithKey (\a _ b -> f a b) 0 m `shouldBe` mapAccum f 0 m
+
+    describe "mapKeys" $ do
+      let f = Div . (+1) . unDiv
+      it "mapKeys f = fromList . fmap (first f) . toList" $ property $ \(m :: DivMap Integer) ->
+        mapKeys f m `shouldBe` fromList (fmap (first f) (toList m))
+    describe "mapKeysWith" $ do
+      let f = Div . (\k -> (k `div` 2) + 1) . unDiv
+      let c = (+)
+      it "mapKeysWith c f = fromListWith c . fmap (first f) . toList" $ property $ \(m :: DivMap Integer) ->
+        mapKeysWith c f m `shouldBe` fromListWith c (fmap (first f) (toList m))
+    describe "mapKeysMonotonic" $ do
+      let f = Div . (+1) . unDiv
+      it "mapKeysMonotonic = mapKeys" $ property $ \(m :: DivMap Integer) ->
+        mapKeysMonotonic f m `shouldBe` mapKeys f m
+
     describe "traverseWithKey" $ do
       let f old = Identity (old + 1)
       it "traverseWithKey (const f) = traverse f" $ property $ \(m :: DivMap Int) ->
@@ -287,17 +312,37 @@ spec =
       it "traverseMaybeWithKey (\\k v -> Just <$> f k v) = traverseWithKey f" $ property $ \(m :: DivMap Integer) ->
         runIdentity (traverseMaybeWithKey (\k v -> Just <$> f k v) m)
           `shouldBe` runIdentity (traverseWithKey f m)
-    describe "mapAccum" $ do
-      let f a b = a + b
-      let g b = b + 1
-      it "fst . mapAccum (\\a b -> (f a b, b)) acc = foldr f acc" $ property $ \(m :: DivMap Integer) ->
-        fst (mapAccum (\a b -> (f a b, b)) 0 m) `shouldBe` foldr f 0 m
-      it "snd . mapAccum (\\a b -> (a, g b)) acc = map g" $ property $ \(m :: DivMap Integer) ->
-        snd (mapAccum (\_ b -> (b, g b)) 0 m) `shouldBe` map g m
-    describe "mapAccumWithKey" $ do
-      let f a b = (a + b, b + 1)
-      it "mapAccumWithKey (\\a _ b -> f a b) acc =  mapAccum f acc" $ property $ \(m :: DivMap Integer) ->
-        mapAccumWithKey (\a _ b -> f a b) 0 m `shouldBe` mapAccum f 0 m
+
+    describe "foldrWithKey" $ do
+      it "foldrWithKey (const f) = foldr f" $ property $ \(m :: DivMap Int) ->
+        foldrWithKey (const (-)) 0 m `shouldBe` foldr (-) 0 m
+      let f k a b = unDiv k + a + b
+      it "foldrWithKey f z = foldr (uncurry f) z . mapWithKey (,)" $ property $ \(m :: DivMap Integer) ->
+        foldrWithKey f 0 m `shouldBe` foldr (uncurry f) 0 (mapWithKey (,) m)
+    describe "foldlWithKey" $ do
+      it "foldlWithKey (\a _ b -> f a b) = foldl f" $ property $ \(m :: DivMap Int) ->
+        foldlWithKey (\a _ b -> a - b) 0 m `shouldBe` foldl (-) 0 m
+      let f a k b = unDiv k + a + b
+      it "foldlWithKey f z = foldl (\a (k, b) -> f a k b) z . mapWithKey (,)" $ property $ \(m :: DivMap Integer) ->
+        foldlWithKey f 0 m `shouldBe` foldl (\a (k, b) -> f a k b) 0 (mapWithKey (,) m)
+    describe "foldMapWithKey" $ do
+      it "foldMapWithKey (const f) = foldMap f" $ property $ \(m :: DivMap Int) ->
+        foldMapWithKey (const Sum) m `shouldBe` foldMap Sum m
+
+    describe "foldr'" $
+      it "foldr' = foldr" $ property $ \(m :: DivMap Int) ->
+        foldr' (-) 0 m `shouldBe` foldr (-) 0 m
+    describe "foldrWithKey'" $ do
+      let f k a b = unDiv k + a + b
+      it "foldrWithKey' = foldrWithKey" $ property $ \(m :: DivMap Integer) ->
+        foldrWithKey' f 0 m `shouldBe` foldrWithKey f 0 m
+    describe "foldl'" $
+      it "foldl' = foldl" $ property $ \(m :: DivMap Int) ->
+        foldl' (-) 0 m `shouldBe` foldl (-) 0 m
+    describe "foldlWithKey'" $ do
+      let f a k b = unDiv k + a + b
+      it "foldlWithKey' = foldlWithKey" $ property $ \(m :: DivMap Integer) ->
+        foldlWithKey' f 0 m `shouldBe` foldlWithKey f 0 m
 
     describe "type class instances" $ do
       describe "Functor" $
@@ -352,3 +397,7 @@ spec =
             sequenceA (fmap Identity m) `shouldBe` Identity m
           it "composition" $ property $ \(m :: DivMap (Maybe (Maybe Int))) ->
             sequenceA (fmap Compose m) `shouldBe` (Compose . fmap sequenceA . sequenceA) m
+        it "fmap = fmapDefault" $ property $ \(m :: DivMap Int) ->
+          fmap (+1) m `shouldBe` fmapDefault (+1) m
+        it "foldMap = foldMapDefault" $ property $ \(m :: DivMap Int) ->
+          foldMap Sum m `shouldBe` foldMapDefault Sum m

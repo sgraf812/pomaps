@@ -78,7 +78,7 @@ module Data.POMap.Lazy (
   , Impl.foldlWithKey
   , Impl.foldMapWithKey
 
-  -- ** Lazy folds
+  -- ** Strict folds
   , Impl.foldr'
   , Impl.foldl'
   , Impl.foldrWithKey'
