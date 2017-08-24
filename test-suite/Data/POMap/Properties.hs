@@ -4,15 +4,17 @@
 module Data.POMap.Properties where
 
 import           Algebra.PartialOrd
-import           Control.Arrow           (first, (&&&))
+import           Control.Arrow           (first, (&&&), (***))
 import           Control.Monad           (guard)
+import           Data.Bifunctor          (bimap)
+import qualified Data.Either             as Either
 import           Data.Foldable           hiding (foldl', foldr', toList)
 import           Data.Function           (on)
 import           Data.Functor.Compose
 import           Data.Functor.Const
 import           Data.Functor.Identity
-import           Data.List               (find, sortBy)
-import           Data.Maybe              (listToMaybe)
+import qualified Data.List               as List
+import qualified Data.Maybe              as Maybe
 import           Data.Monoid             (Dual (..), Endo (..), Sum (..))
 import           Data.Ord                (comparing)
 import           Data.POMap.Arbitrary    ()
@@ -20,14 +22,14 @@ import           Data.POMap.Divisibility
 import           Data.POMap.Lazy
 import           Data.Traversable
 import           GHC.Exts                (coerce)
-import           Prelude                 hiding (lookup, map, max, null)
+import           Prelude                 hiding (filter, lookup, map, max, null)
 import           Test.Tasty.Hspec
 import           Test.Tasty.QuickCheck
 
 type DivMap v = POMap Divisibility v
 
 instance Eq v => Eq (DivMap v) where
-  (==) = (==) `on` sortBy (comparing (unDiv . fst)) . toList
+  (==) = (==) `on` List.sortBy (comparing (unDiv . fst)) . toList
 
 div' :: Int -> DivMap Integer
 div' = fromList . divisibility
@@ -50,7 +52,11 @@ makeEntries :: [Integer] -> [(Divisibility, Integer)]
 makeEntries = fmap (Div &&& id)
 
 shouldBeSameEntries :: (Eq v, Show v) => [(Divisibility, v)] -> [(Divisibility, v)] -> Expectation
-shouldBeSameEntries = shouldBe `on` sortBy (comparing (unDiv . fst))
+shouldBeSameEntries = shouldBe `on` List.sortBy (comparing (unDiv . fst))
+
+isAntichain :: PartialOrd k => [k] -> Bool
+isAntichain []     = True
+isAntichain (x:xs) = all (not . comparable x) xs && isAntichain xs
 
 spec :: Spec
 spec =
@@ -227,7 +233,7 @@ spec =
           any (member k) ms === member k (unions ms)
       it "left bias" $
         forAll (vectorOf 10 arbitrary) $ \(ms :: [DivMap Integer]) k ->
-          lookup k (unions ms) === (find (member k) ms >>= lookup k)
+          lookup k (unions ms) === (List.find (member k) ms >>= lookup k)
     describe "unionsWith" $ do
       let left l _ = l
       it "unions = unionsWith left" $
@@ -236,7 +242,7 @@ spec =
       let right _ r = r
       it "can have right bias" $
         forAll (vectorOf 5 arbitrary) $ \(ms :: [DivMap Integer]) k ->
-          lookup k (unionsWith right ms) === (find (member k) (reverse ms) >>= lookup k)
+          lookup k (unionsWith right ms) === (List.find (member k) (reverse ms) >>= lookup k)
 
     describe "difference" $
       it "domain" $ property $ \(m1 :: DivMap Integer) (m2 :: DivMap ()) k ->
@@ -344,6 +350,125 @@ spec =
       it "foldlWithKey' = foldlWithKey" $ property $ \(m :: DivMap Integer) ->
         foldlWithKey' f 0 m `shouldBe` foldlWithKey f 0 m
 
+    describe "keys" $ do
+      it "length . keys = size" $ property $ \(m :: DivMap Int) ->
+        length (keys m) `shouldBe` size m
+      it "all (\\k -> member k m) (keys m)" $ property $ \(m :: DivMap Int) ->
+        all (`member` m) (keys m) `shouldBe` True
+    describe "elems" $
+      it "foldMap Sum . elems = foldMap Sum" $ property $ \(m :: DivMap Int) ->
+        foldMap Sum (elems m) `shouldBe` foldMap Sum m
+    describe "assocs" $ do
+      it "length . assocs = size" $ property $ \(m :: DivMap Int) ->
+        length (assocs m) `shouldBe` size m
+      it "List.lookup k (assocs m) = lookup k m" $ property $ \(m :: DivMap Int) k ->
+        List.lookup k (assocs m) `shouldBe` lookup k m
+
+    describe "toList" $ do
+      it "length . toList = size" $ property $ \(m :: DivMap Int) ->
+        length (toList m) `shouldBe` size m
+      it "List.lookup k (toList m) = lookup k m" $ property $ \(m :: DivMap Int) k ->
+        List.lookup k (toList m) `shouldBe` lookup k m
+    describe "fromList" $
+      it "fromList = foldr (uncurry insert) empty" $ property $ \(xs :: [(Divisibility, Int)]) ->
+        fromList xs `shouldBe` foldr (uncurry insert) empty xs
+    describe "fromListWith" $ do
+      it "fromListWith const = fromList" $ property $ \(xs :: [(Divisibility, Int)]) ->
+        fromListWith const xs `shouldBe` fromList xs
+      let f old new = old + new
+      it "fromListWith f = fromListWithKey (const f)" $ property $ \(xs :: [(Divisibility, Int)]) ->
+        fromListWith f xs `shouldBe` fromListWithKey (const f) xs
+      it "fromListWith f = foldr (uncurry (insertWith f)) empty" $ property $ \(xs :: [(Divisibility, Int)]) ->
+        fromListWith f xs `shouldBe` foldr (uncurry (insertWith f)) empty xs
+    describe "fromListWithKey" $ do
+      let f k old new = unDiv k + old + new
+      it "fromListWithKey f = foldr (uncurry (insertWithKey f)) empty" $ property $ \(xs :: [(Divisibility, Integer)]) ->
+        fromListWithKey f xs `shouldBe` foldr (uncurry (insertWithKey f)) empty xs
+
+    describe "filter" $
+      it "filter p = fromList . filter (p . snd) . toList" $ property $ \(m :: DivMap Int) ->
+        filter odd m `shouldBe` fromList (List.filter (odd . snd) (toList m))
+    describe "filterWithKey" $ do
+      let p k v = odd (unDiv k + v)
+      it "filterWithKey p = fromList . filter (uncurry p) . toList" $ property $ \(m :: DivMap Integer) ->
+        filterWithKey p m `shouldBe` fromList (List.filter (uncurry p) (toList m))
+    describe "partition" $
+      it "partition p = filter p &&& filter even" $ property $ \(m :: DivMap Int) ->
+        partition odd m `shouldBe` (filter odd &&& filter even) m
+    describe "partitionWithKey" $ do
+      let p k v = odd (unDiv k + v)
+      it "partitionWithKey p = filterWithKey p &&& filterWithKey ((not .) . p)" $ property $ \(m :: DivMap Integer) ->
+        partitionWithKey p m `shouldBe` (filterWithKey p &&& filterWithKey ((not .) . p)) m
+    describe "mapMaybe" $ do
+      let f v = if odd v then Just (v + 1) else Nothing
+      it "mapMaybe f = fromList . Maybe.mapMaybe (traverse f) . toList" $ property $ \(m :: DivMap Int) ->
+        mapMaybe f m `shouldBe` fromList (Maybe.mapMaybe (traverse f) (toList m))
+    describe "mapMaybeWithKey" $ do
+      let f k v = if odd (unDiv k + v) then Just (v + 1) else Nothing
+      it "mapMaybeWithKey f = fromList . Maybe.mapMaybe (sequenceA . (fst &&& uncurry f)) . toList" $ property $ \(m :: DivMap Integer) ->
+        mapMaybeWithKey f m `shouldBe` fromList (Maybe.mapMaybe (sequenceA . (fst &&& uncurry f)) (toList m))
+    describe "mapEither" $ do
+      let f v
+            | odd v = Left (v + 1)
+            | otherwise = Right (v - 1)
+      it "mapEither f = (fromList &&& fromList) . Either.partitionEithers . fmap (... f ...) . toList" $
+        property $ \(m :: DivMap Int) ->
+          mapEither f m `shouldBe`
+            ((fromList *** fromList)
+            . Either.partitionEithers
+            . fmap (\(k, v) -> bimap ((,) k) ((,) k) (f v))
+            . toList)
+            m
+    describe "mapEitherWithKey" $ do
+      let f k v
+            | odd (unDiv k + v) = Left (v + 1)
+            | otherwise = Right (v - 1)
+      it "mapEitherWithKey f = (fromList &&& fromList) . Either.partitionEithers . fmap (... f ...) . toList" $
+        property $ \(m :: DivMap Integer) ->
+          mapEitherWithKey f m `shouldBe`
+            ((fromList *** fromList)
+            . Either.partitionEithers
+            . fmap (\(k, v) -> bimap ((,) k) ((,) k) (f k v))
+            . toList)
+            m
+
+    describe "isSubmapOf" $ do
+      it "div100 is submap of div1000" $
+        div100 `isSubmapOf` div1000
+      it "div1000 is not submap of div100" $
+        not (div1000 `isSubmapOf` div100)
+    describe "isSubmapOfBy" $ do
+      it "isSubmapOfBy (<) not refl" $ property $ \(m :: DivMap Int) ->
+        size m > 0 ==> not (isSubmapOfBy (<) m m)
+      it "isSubmapOfBy (<) m (map (+1) m)" $ property $ \(m :: DivMap Int) ->
+        isSubmapOfBy (<) m (map (+1) m)
+    describe "isProperSubmapOf" $ do
+      it "submap with less size" $ property $ \(m1 :: DivMap Int) m2 ->
+        (m1 `isProperSubmapOf` m2) `shouldBe` (size m1 < size m2 && m1 `isSubmapOf` m2)
+      it "div100 is proper submap of div1000" $
+        div100 `isProperSubmapOf` div1000
+      it "div1000 is not proper submap of div100" $
+        not (div1000 `isSubmapOf` div100)
+    describe "isProperSubmapOfBy" $
+      it "not (isProperSubmapOfBy (<) m (map (+1) m))" $ property $ \(m :: DivMap Int) ->
+        not (isProperSubmapOfBy (<) m (map (+1) m))
+
+    describe "lookupMin" $ do
+      it "antichain" $ property $ \(m :: DivMap Int) ->
+        isAntichain (fmap fst (lookupMin m))
+      let less a b = a `leq` b && not (b `leq` a)
+      it "no element less" $ property $ \(m :: DivMap Int) ->
+        shouldSatisfy (fmap fst (lookupMin m)) $ \mins ->
+          all (\k -> not (any (`less` k) (keys m))) mins
+    describe "lookupMax" $ do
+      let greater a b = b `leq` a && not (a `leq` b)
+      it "antichain" $ property $ \(m :: DivMap Int) ->
+        isAntichain (fmap fst (lookupMax m))
+      it "no element greater" $ property $ \(m :: DivMap Int) ->
+        shouldSatisfy (fmap fst (lookupMax m)) $ \mins ->
+          all (\k -> not (any (`greater` k) (keys m))) mins
+
+
     describe "type class instances" $ do
       describe "Functor" $
         describe "fmap" $ do
@@ -382,7 +507,7 @@ spec =
             getSum (getConst (traverse (const (Const (Sum 1))) m)) `shouldBe` size m
           let f n = replicate (min 2 n) n
           let g n = if odd n then Just n else Nothing
-          let t = listToMaybe
+          let t = Maybe.listToMaybe
           it "naturality" $ property $ \(m :: DivMap Int) ->
             t (traverse f m) `shouldBe` traverse (t . f) m
           it "identity" $ property $ \(m :: DivMap Int) ->
@@ -390,7 +515,7 @@ spec =
           it "composition" $ property $ \(m :: DivMap Int) ->
             traverse (Compose . fmap g . f) m `shouldBe` (Compose . fmap (traverse g) . traverse f) m
         describe "sequenceA" $ do
-          let t = listToMaybe
+          let t = Maybe.listToMaybe
           it "naturality" $ property $ \(m :: DivMap [Int]) ->
             t (sequenceA m) `shouldBe` sequenceA (fmap t m)
           it "identity" $ property $ \(m :: DivMap Int) ->

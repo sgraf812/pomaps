@@ -130,6 +130,15 @@ data RelationalOperator
   | GreaterThan
   deriving (Eq, Ord, Show)
 
+flipRelationalOperator :: RelationalOperator -> RelationalOperator
+flipRelationalOperator op =
+  case op of
+    LessThan     -> GreaterThan
+    GreaterThan  -> LessThan
+    LessEqual    -> GreaterEqual
+    GreaterEqual -> LessEqual
+    _            -> op
+
 containsOrdering :: Ordering -> RelationalOperator -> Bool
 containsOrdering LT LessThan     = True
 containsOrdering LT LessEqual    = True
@@ -156,19 +165,23 @@ addToAntichain !op entry@(k, _) chain = maybe chain (entry:) (foldr weedOut (Jus
     weedOut e'@(k', _) mayChain' =
       case comparePartial k k' of
         Just LT
-          | containsOrdering GT op -> mayChain' -- don't need e'
-          | containsOrdering LT op -> Nothing
-        Just GT
-          | containsOrdering GT op -> Nothing
           | containsOrdering LT op -> mayChain' -- don't need e'
+          | containsOrdering GT op -> Nothing
+        Just GT
+          | containsOrdering LT op -> Nothing
+          | containsOrdering GT op -> mayChain' -- don't need e'
         Just EQ -> Nothing -- should never happen
         _ -> (e' :) <$> mayChain' -- still need e'
 {-# INLINE addToAntichain #-}
 
+dedupAntichain :: PartialOrd k => RelationalOperator -> [(k, v)] -> [(k, v)]
+dedupAntichain !op = foldr (addToAntichain op) []
+
 -- If inlined, this optimizes to the equivalent hand-written variants.
 lookupX :: PartialOrd k => RelationalOperator -> k -> POMap k v -> [(k, v)]
 lookupX !op !k
-  = foldr (addToAntichain op) []
+  -- we bias comparable elements in the opposite direction
+  = dedupAntichain (flipRelationalOperator op)
   . Maybe.mapMaybe findNothing
   . chainDecomposition
   where
@@ -762,12 +775,12 @@ isProperSubmapOfBy f s m = size s < size m && isSubmapOfBy f s m
 -- * Min/Max
 --
 
-lookupMin :: POMap k v -> [(k, v)]
-lookupMin = Maybe.mapMaybe Map.lookupMin . chainDecomposition
+lookupMin :: PartialOrd k => POMap k v -> [(k, v)]
+lookupMin = dedupAntichain LessThan . Maybe.mapMaybe Map.lookupMin . chainDecomposition
 {-# INLINABLE lookupMin #-}
 
-lookupMax :: POMap k v -> [(k, v)]
-lookupMax = Maybe.mapMaybe Map.lookupMax . chainDecomposition
+lookupMax :: PartialOrd k => POMap k v -> [(k, v)]
+lookupMax = dedupAntichain GreaterThan . Maybe.mapMaybe Map.lookupMax . chainDecomposition
 {-# INLINABLE lookupMax #-}
 
 
