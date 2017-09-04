@@ -1,0 +1,91 @@
+name:           pomaps
+version:        0.0.0.1
+synopsis:       Maps and sets indexed by a partial order
+category:       Data Structures
+homepage:       https://github.com/sgraf812/pomaps#readme
+bug-reports:    https://github.com/sgraf812/pomaps/issues
+maintainer:     Sebastian Graf
+license:        MIT
+build-type:     Simple
+cabal-version:  >= 1.10
+
+extra-source-files:
+    CHANGELOG.md
+    LICENSE.md
+    README.md
+    stack.yaml
+
+description:
+  Maps (and sets) indexed by keys satisfying <https://hackage.haskell.org/package/lattices/docs/Algebra-PartialOrd.html#t:PartialOrd PartialOrd>.
+
+source-repository head
+  type: git
+  location: https://github.com/sgraf812/pomaps
+
+flag use-lattices
+  description: Depend on the lattices package for the PartialOrd class.
+  default: True
+
+library
+  hs-source-dirs:
+      library
+  ghc-options: -Wall
+  build-depends:
+      base >= 4.6.0.0 && < 4.13
+    -- oneShot
+    , ghc-prim >= 0.4 && < 0.6
+    -- We depend on the internal modules of containers, 
+    -- so we have to track development real close.
+    -- Data.Map.Internal is only available since 0.5.9,
+    -- of which 0.5.9.2 is the first safe version
+    , containers >= 0.5.9.2 && <= 0.5.10.2
+  if flag(use-lattices)
+    build-depends: 
+      lattices < 2
+  exposed-modules:
+      Data.POMap.Internal
+      Data.POMap.Lazy
+      Data.POMap.Strict
+      Data.POSet.Internal
+  if !flag(use-lattices)
+    hs-source-dirs:
+      lattices
+    exposed-modules:
+      Algebra.PartialOrd
+  default-language: Haskell2010
+
+test-suite pomaps-test-suite
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  hs-source-dirs:
+      test-suite
+  ghc-options: -Wall -rtsopts -threaded -with-rtsopts=-N
+  build-depends:
+      base
+    , containers >= 0.5.9.2
+    , pomaps
+    , tasty
+    , tasty-hspec
+    , tasty-quickcheck
+  if flag(use-lattices)
+    build-depends: 
+      lattices < 2
+  other-modules:
+      Data.POMap.Arbitrary
+      Data.POMap.Divisibility
+      Data.POMap.Properties
+  default-language: Haskell2010
+
+benchmark pomaps-benchmarks
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  hs-source-dirs:
+      benchmark
+  ghc-options: -Wall -rtsopts -threaded -with-rtsopts=-N
+  build-depends:
+      base
+    , pomaps
+    , criterion
+  default-language: Haskell2010
+
+
