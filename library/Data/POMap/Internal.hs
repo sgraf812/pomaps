@@ -5,23 +5,22 @@
 {-# LANGUAGE KindSignatures      #-}
 {-# LANGUAGE MagicHash           #-}
 {-# LANGUAGE MonadComprehensions #-}
+{-# LANGUAGE RoleAnnotations     #-}
 {-# LANGUAGE TypeFamilies        #-}
 
 module Data.POMap.Internal where
 
 import           Algebra.PartialOrd
-import           Control.Arrow      (first, second, (&&&), (***))
+import           Control.Arrow      (first, second, (***))
 import qualified Data.List          as List
 import           Data.Map.Internal  (AreWeStrict (..), Map (..))
 import qualified Data.Map.Internal  as Map
 import           Data.Maybe         (fromMaybe)
 import qualified Data.Maybe         as Maybe
 import           Data.Monoid        (Alt (..), Any (..))
-import           Debug.Trace
 import           GHC.Exts           (Proxy#, inline, proxy#)
 import qualified GHC.Exts
 import           GHC.Magic          (oneShot)
-import           GHC.TypeLits
 import           Prelude            hiding (lookup, map)
 
 class SingIAreWeStrict (s :: AreWeStrict) where
@@ -43,20 +42,20 @@ data POMap k v
   = POMap !Int ![Map k v]
   deriving (Show, Read) -- TODO: Implement these by hand
 
+type role POMap nominal representational
 
 mkPOMap :: [Map k v] -> POMap k v
 mkPOMap decomp = POMap (List.foldr ((+) . Map.size) 0 decomp) decomp
 {-# INLINE mkPOMap #-}
 
-
 chainDecomposition :: POMap k v -> [Map k v]
 chainDecomposition (POMap _ cd) = cd
+{-# INLINE chainDecomposition #-}
 
 --
 -- * Instances
 --
 
-{-# INLINE chainDecomposition #-}
 instance Functor (POMap k) where
   fmap = map
   a <$ (POMap n d) = POMap n (fmap (a <$) d)
@@ -327,6 +326,7 @@ overChains handleChain oldWon newWon incomparable pomap
   $ decomp
   where
     decomp = chainDecomposition pomap
+    improve ([], _) _ = error "List.tails was empty"
     improve (chain:chains, candidate) winner =
       -- We want to minimize the score: Prefer Found over NotFound and
       -- Incomparability (which means we have to add a new chain to the
@@ -782,37 +782,3 @@ lookupMin = dedupAntichain LessThan . Maybe.mapMaybe Map.lookupMin . chainDecomp
 lookupMax :: PartialOrd k => POMap k v -> [(k, v)]
 lookupMax = dedupAntichain GreaterThan . Maybe.mapMaybe Map.lookupMax . chainDecomposition
 {-# INLINABLE lookupMax #-}
-
-
-
-newtype Mod (n :: Nat)
-  = Mod { unMod :: Integer }
-  deriving Eq
-
-instance Show (Mod n)  where
-  show = show . unMod
-
-instance Read (Mod n) where
-  readsPrec p = fmap (first Mod) . readsPrec p
-
-instance KnownNat n => PartialOrd (Mod n) where
-  comparable a b = (unMod a `mod` natVal a) == (unMod b `mod` natVal b)
-  leq a b
-    | comparable a b = unMod a <= unMod b
-    | otherwise = False
-
-example :: POMap (Mod 3) ()
-example = mkPOMap
-  [ bin 10 (bin 4 (leaf 1) Tip) (leaf 13)
-  , bin 5 (leaf 2) (leaf 80)
-  , bin 9 (leaf 0) (bin 15 Tip (leaf 63))
-  ]
-  where
-    bin k = Map.bin (Mod k) ()
-    leaf k = Map.singleton (Mod k) ()
-
-example2 :: POMap (Mod 3) ()
-example2 = fromList (proxy# :: Proxy# 'Lazy) exampleList
-
-exampleList :: [(Mod 3, ())]
-exampleList = fmap ((id &&& const ()) . Mod) [ 0,1,2,4,63,15,80,9,5,13,10]
