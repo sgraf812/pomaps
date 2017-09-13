@@ -46,6 +46,7 @@ library
       Data.POMap.Internal
       Data.POMap.Lazy
       Data.POMap.Strict
+      Data.POSet
       Data.POSet.Internal
   if !flag(use-lattices)
     hs-source-dirs:
