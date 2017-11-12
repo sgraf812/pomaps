@@ -38,6 +38,9 @@ seq' p a b
   | otherwise = seq a b
 {-# INLINE seq' #-}
 
+seqList :: [a] -> [a]
+seqList xs = foldr seq xs xs
+
 data POMap k v
   = POMap !Int ![Map k v]
   deriving (Show, Read) -- TODO: Implement these by hand
@@ -45,7 +48,7 @@ data POMap k v
 type role POMap nominal representational
 
 mkPOMap :: [Map k v] -> POMap k v
-mkPOMap decomp = POMap (List.foldr ((+) . Map.size) 0 decomp) decomp
+mkPOMap decomp = POMap (foldr ((+) . Map.size) 0 decomp) (seqList decomp)
 {-# INLINE mkPOMap #-}
 
 chainDecomposition :: POMap k v -> [Map k v]
@@ -80,6 +83,12 @@ instance PartialOrd k => GHC.Exts.IsList (POMap k v) where
   type Item (POMap k v) = (k, v)
   fromList = fromList (proxy# :: Proxy# 'Lazy)
   toList = toList
+
+-- | /O(n^2)/.
+instance (PartialOrd k, Eq v) => Eq (POMap k v) where
+  a == b
+    | size a /= size b = False
+    | otherwise = isSubmapOf a b && isSubmapOf b a
 
 --
 -- * Query
@@ -401,7 +410,9 @@ alterWithKey s f k = mkPOMap . overChains handleChain oldWon newWon incomparable
     incomparable decomp =
       case f k Nothing of
         Nothing -> decomp
-        Just v  -> Map.singleton k v : decomp
+        Just v
+          | let chain = Map.singleton k v
+          -> seq' s chain (chain : decomp)
 {-# INLINABLE alterWithKey #-}
 {-# SPECIALIZE alterWithKey :: PartialOrd k => Proxy# 'Strict -> (k -> Maybe v -> Maybe v) -> k -> POMap k v -> POMap k v #-}
 {-# SPECIALIZE alterWithKey :: PartialOrd k => Proxy# 'Lazy -> (k -> Maybe v -> Maybe v) -> k -> POMap k v -> POMap k v #-}
@@ -439,7 +450,9 @@ alterLookupWithKey s f !k
     incomparable decomp =
       (Nothing, case f k Nothing of
         Nothing -> decomp
-        Just v  -> Map.singleton k v : decomp)
+        Just v
+          | let chain = Map.singleton k v
+          -> seq' s chain (chain : decomp))
 {-# INLINABLE alterLookupWithKey #-}
 {-# SPECIALIZE alterLookupWithKey :: PartialOrd k => Proxy# 'Strict -> (k -> Maybe v -> Maybe v) -> k -> POMap k v -> (Maybe v, POMap k v) #-}
 {-# SPECIALIZE alterLookupWithKey :: PartialOrd k => Proxy# 'Lazy -> (k -> Maybe v -> Maybe v) -> k -> POMap k v -> (Maybe v, POMap k v) #-}
@@ -479,8 +492,10 @@ alterF s f k = fmap mkPOMap . overChains handleChain oldWon newWon incomparable
     -- the alteration function produces a value
     incomparable decomp = f Nothing <#> \mv ->
       case mv of
-        Just v  -> Map.singleton k v : decomp
         Nothing -> decomp
+        Just v
+          | let chain = Map.singleton k v
+          -> seq' s chain (chain : decomp)
 {-# INLINABLE alterF #-}
 {-# SPECIALIZE alterF :: (Functor f, PartialOrd k) => Proxy# 'Strict -> (Maybe v -> f (Maybe v)) -> k -> POMap k v -> f (POMap k v) #-}
 {-# SPECIALIZE alterF :: (Functor f, PartialOrd k) => Proxy# 'Lazy -> (Maybe v -> f (Maybe v)) -> k -> POMap k v -> f (POMap k v) #-}

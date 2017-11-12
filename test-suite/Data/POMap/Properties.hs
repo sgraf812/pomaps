@@ -21,14 +21,13 @@ import           Data.POMap.Arbitrary    ()
 import           Data.POMap.Divisibility
 import           Data.POMap.Lazy
 import           Data.Traversable
-import           GHC.Exts                (coerce)
 import           Prelude                 hiding (filter, lookup, map, max, null)
 import           Test.Tasty.Hspec
 import           Test.Tasty.QuickCheck
 
 type DivMap v = POMap Divisibility v
 
-instance Eq v => Eq (DivMap v) where
+instance {-# OVERLAPPING #-} Eq v => Eq (DivMap v) where
   (==) = (==) `on` List.sortBy (comparing (unDiv . fst)) . toList
 
 div' :: Int -> DivMap Integer
