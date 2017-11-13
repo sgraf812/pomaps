@@ -6,7 +6,8 @@ This package tries to load off as much work as possible to the excellent [`conta
 The interface is kept as similar to [`Data.Map.{Strict/Lazy}`](https://hackage.haskell.org/package/containers-0.5.10.2/docs/Data-Map-Strict.html) as possible, which is an excuse for somewhat lacking documentation.
 
 `POMap`s basically store a decomposition of totally ordered chains (e.g. something `Map`s can handle). 
-Functionality and strictness properties should be pretty much covered by the testsuite, but it's not battle-tested yet.
+Functionality and strictness properties should be pretty much covered by the testsuite. 
+But it's not battle-tested yet, so if you encounter space leaks in the implementation, let me know.
 
 A rather naive implementation leads to `O(w*n*log n)` lookups, where `w` is the width of the decomposition (which should be the size of the biggest anti-chain).
 This is enough for me at the moment to get things going, but there is room for improvement ([Sorting and Selection in Posets](https://arxiv.org/abs/0707.1532)).

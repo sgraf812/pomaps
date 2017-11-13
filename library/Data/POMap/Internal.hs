@@ -745,26 +745,32 @@ partitionWithKey p (POMap _ d)
   . fmap (Map.partitionWithKey p)
   $ d
 
-mapMaybe :: (a -> Maybe b) -> POMap k a -> POMap k b
-mapMaybe f = mapMaybeWithKey (const f)
+mapMaybe :: SingIAreWeStrict s => Proxy# s -> (a -> Maybe b) -> POMap k a -> POMap k b
+mapMaybe s f = mapMaybeWithKey s (const f)
 
-mapMaybeWithKey :: (k -> a -> Maybe b) -> POMap k a -> POMap k b
-mapMaybeWithKey f (POMap _ d) = mkPOMap (Map.mapMaybeWithKey f <$> d)
+mapMaybeWithKey :: SingIAreWeStrict s => Proxy# s -> (k -> a -> Maybe b) -> POMap k a -> POMap k b
+mapMaybeWithKey s f (POMap _ d)
+  | Strict <- areWeStrict s = mkPOMap (Map.Strict.mapMaybeWithKey f <$> d)
+  | otherwise = mkPOMap (Map.Lazy.mapMaybeWithKey f <$> d)
 
 traverseMaybeWithKey :: (Applicative f, SingIAreWeStrict s) => Proxy# s -> (k -> a -> f (Maybe b)) -> POMap k a -> f (POMap k b)
 traverseMaybeWithKey s f (POMap _ d)
   | Strict <- areWeStrict s = mkPOMap <$> traverse (Map.Strict.traverseMaybeWithKey f) d
   | otherwise = mkPOMap <$> traverse (Map.Lazy.traverseMaybeWithKey f) d
 
-mapEither :: (a -> Either b c) -> POMap k a -> (POMap k b, POMap k c)
-mapEither p = mapEitherWithKey (const p)
+mapEither :: SingIAreWeStrict s => Proxy# s -> (a -> Either b c) -> POMap k a -> (POMap k b, POMap k c)
+mapEither s p = mapEitherWithKey s (const p)
 
-mapEitherWithKey :: (k -> a -> Either b c) -> POMap k a -> (POMap k b, POMap k c)
-mapEitherWithKey p (POMap _ d)
+mapEitherWithKey :: SingIAreWeStrict s => Proxy# s -> (k -> a -> Either b c) -> POMap k a -> (POMap k b, POMap k c)
+mapEitherWithKey s p (POMap _ d)
   = (mkPOMap *** mkPOMap)
   . unzip
-  . fmap (Map.mapEitherWithKey p)
+  . fmap (mewk p)
   $ d
+  where
+    mewk
+      | Strict <- areWeStrict s = Map.Strict.mapEitherWithKey
+      | otherwise = Map.Lazy.mapEitherWithKey
 
 -- TODO: Maybe `split*` variants, returning a triple, but that would
 -- be rather inefficient anyway.

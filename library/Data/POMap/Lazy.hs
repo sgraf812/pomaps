@@ -102,10 +102,10 @@ module Data.POMap.Lazy (
   , Impl.partition
   , Impl.partitionWithKey
 
-  , Impl.mapMaybe
-  , Impl.mapMaybeWithKey
-  , Impl.mapEither
-  , Impl.mapEitherWithKey
+  , mapMaybe
+  , mapMaybeWithKey
+  , mapEither
+  , mapEitherWithKey
 
   -- * Submap
   , Impl.isSubmapOf, Impl.isSubmapOfBy
@@ -233,3 +233,19 @@ mapKeysWith = Impl.mapKeysWith (proxy# :: Proxy# 'Lazy)
 traverseMaybeWithKey :: Applicative t => (k -> a -> t (Maybe b)) -> POMap k a -> t (POMap k b)
 traverseMaybeWithKey = Impl.traverseMaybeWithKey (proxy# :: Proxy# 'Lazy)
 {-# INLINE traverseMaybeWithKey #-}
+
+mapMaybe :: (a -> Maybe b) -> POMap k a -> POMap k b
+mapMaybe = Impl.mapMaybe (proxy# :: Proxy# 'Lazy)
+{-# INLINE mapMaybe #-}
+
+mapMaybeWithKey :: (k -> a -> Maybe b) -> POMap k a -> POMap k b
+mapMaybeWithKey = Impl.mapMaybeWithKey (proxy# :: Proxy# 'Lazy)
+{-# INLINE mapMaybeWithKey #-}
+
+mapEither :: (a -> Either b c) -> POMap k a -> (POMap k b, POMap k c)
+mapEither = Impl.mapEither (proxy# :: Proxy# 'Lazy)
+{-# INLINE mapEither #-}
+
+mapEitherWithKey :: (k -> a -> Either b c) -> POMap k a -> (POMap k b, POMap k c)
+mapEitherWithKey = Impl.mapEitherWithKey (proxy# :: Proxy# 'Lazy)
+{-# INLINE mapEitherWithKey #-}
