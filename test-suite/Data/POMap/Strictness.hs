@@ -108,53 +108,46 @@ spec =
       let insertAt impl k v m = runIdentity (impl (const (Identity (Just v))) k m)
       insertTemplate (insertAt L.alterF) (insertAt S.alterF)
 
-    {-
-    describe "map" $ do
-      let f = (+1)
-      it "map = fmap" $ property $ \(m :: DivMap Int) ->
-        map f m `shouldBe` fmap f m
-    describe "mapWithKey" $ do
-      let f = (+1)
-      it "mapWithKey (const f) = map f" $ property $ \(m :: DivMap Int) ->
-        mapWithKey (const f) m `shouldBe` map f m
-      let g k v = unDiv k + v
-      it "can access keys" $ property $ \(m :: DivMap Integer) k ->
-        lookup k (mapWithKey g m) `shouldBe` (unDiv k +) <$> lookup k m
+    let mapTemplate l s = do
+          it "strict" $ property $ \(m :: DivMap Int) ->
+            not (null m) ==> shouldBeBottom (s (const bottom) m)
+          it "lazy" $ property $ \(m :: DivMap Int) ->
+            shouldNotBeBottom (l (const bottom) m)
 
+    describe "map" $
+      mapTemplate L.map S.map
+    describe "mapWithKey" $
+      mapTemplate (ignoreKey L.mapWithKey) (ignoreKey S.mapWithKey)
     describe "mapAccum" $ do
-      let f a b = a + b
-      let g b = b + 1
-      it "mapAccum (\\a b -> (f a b, g b)) acc = foldr f acc &&& map g" $ property $ \(m :: DivMap Integer) ->
-        mapAccum (\a b -> (f a b, g b)) 0 m `shouldBe` (foldr f 0 &&& map g) m
+      let templ impl f m = snd (impl (const f) undefined m)
+      mapTemplate (templ L.mapAccum) (templ S.mapAccum)
     describe "mapAccumWithKey" $ do
-      let f a b = (a + b, b + 1)
-      it "mapAccumWithKey (\\a _ b -> f a b) acc =  mapAccum f acc" $ property $ \(m :: DivMap Integer) ->
-        mapAccumWithKey (\a _ b -> f a b) 0 m `shouldBe` mapAccum f 0 m
-
-    describe "mapKeys" $ do
-      let f = Div . (+1) . unDiv
-      it "mapKeys f = fromList . fmap (first f) . toList" $ property $ \(m :: DivMap Integer) ->
-        mapKeys f m `shouldBe` fromList (fmap (first f) (toList m))
+      let templ impl f m = snd (impl (\_ _ -> f) undefined m)
+      mapTemplate (templ L.mapAccumWithKey) (templ S.mapAccumWithKey)
     describe "mapKeysWith" $ do
-      let f = Div . (\k -> (k `div` 2) + 1) . unDiv
-      let c = (+)
-      it "mapKeysWith c f = fromListWith c . fmap (first f) . toList" $ property $ \(m :: DivMap Integer) ->
-        mapKeysWith c f m `shouldBe` fromListWith c (fmap (first f) (toList m))
-    describe "mapKeysMonotonic" $ do
-      let f = Div . (+1) . unDiv
-      it "mapKeysMonotonic = mapKeys" $ property $ \(m :: DivMap Integer) ->
-        mapKeysMonotonic f m `shouldBe` mapKeys f m
+      it "strict" $ property $ \(m :: DivMap Int) ->
+        length m > 1 ==> shouldBeBottom (S.mapKeysWith (\_ _ -> bottom) (const (Div 1)) m)
+      it "lazy" $ property $ \(m :: DivMap Int) ->
+        shouldNotBeBottom (L.mapKeysWith (\_ _ -> bottom) (const (Div 1)) m)
+
+    describe "Functor" $ do
+      describe "fmap" $
+        it "always lazy" $ property $ \(m :: DivMap Int) ->
+          shouldNotBeBottom (const bottom <$> m)
+      describe "<$" $
+        it "always lazy" $ property $ \(m :: DivMap Int) ->
+          shouldNotBeBottom (bottom <$ m)
 
     describe "traverseWithKey" $ do
-      let f old = Identity (old + 1)
-      it "traverseWithKey (const f) = traverse f" $ property $ \(m :: DivMap Int) ->
-        runIdentity (traverseWithKey (const f) m) `shouldBe` runIdentity (traverse f m)
-    describe "traverseMaybeWithKey" $ do
-      let f k old = Identity (unDiv k + old + 1)
-      it "traverseMaybeWithKey (\\k v -> Just <$> f k v) = traverseWithKey f" $ property $ \(m :: DivMap Integer) ->
-        runIdentity (traverseMaybeWithKey (\k v -> Just <$> f k v) m)
-          `shouldBe` runIdentity (traverseWithKey f m)
-
+      let templ impl f m = runIdentity (impl (\_ v -> Identity (f v)) m)
+      mapTemplate (templ L.traverseWithKey) (templ S.traverseWithKey)
+    -- `Data.Map.Strict.traverseMaybeWithKey` is actually just the lazy version
+    -- (as of containers-0.5.10.2), so this breaks.
+    --
+    -- describe "traverseMaybeWithKey" $ do
+    --   let templ impl f m = runIdentity (impl (\_ v -> Identity (Just (f v))) m)
+    --   mapTemplate (templ L.traverseMaybeWithKey) (templ S.traverseMaybeWithKey)
+{-
     describe "foldrWithKey" $ do
       it "foldrWithKey (const f) = foldr f" $ property $ \(m :: DivMap Int) ->
         foldrWithKey (const (-)) 0 m `shouldBe` foldr (-) 0 m

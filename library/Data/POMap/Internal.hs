@@ -15,6 +15,8 @@ import           Control.Arrow      (first, second, (***))
 import qualified Data.List          as List
 import           Data.Map.Internal  (AreWeStrict (..), Map (..))
 import qualified Data.Map.Internal  as Map
+import qualified Data.Map.Lazy      as Map.Lazy
+import qualified Data.Map.Strict    as Map.Strict
 import           Data.Maybe         (fromMaybe)
 import qualified Data.Maybe         as Maybe
 import           Data.Monoid        (Alt (..), Any (..))
@@ -60,8 +62,8 @@ chainDecomposition (POMap _ cd) = cd
 --
 
 instance Functor (POMap k) where
-  fmap = map
-  a <$ (POMap n d) = POMap n (fmap (a <$) d)
+  fmap = map (proxy# :: Proxy# 'Lazy)
+  a <$ (POMap n d) = mkPOMap (fmap (a <$) d)
 
 instance Foldable (POMap k) where
   foldr f acc = List.foldr (flip (Map.foldr f)) acc . chainDecomposition
@@ -76,7 +78,7 @@ instance Foldable (POMap k) where
   {-# INLINE length #-}
 
 instance Traversable (POMap k) where
-  traverse f = traverseWithKey (const f)
+  traverse f = traverseWithKey (proxy# :: Proxy# 'Lazy) (const f)
   {-# INLINE traverse #-}
 
 instance PartialOrd k => GHC.Exts.IsList (POMap k v) where
@@ -605,47 +607,55 @@ intersectionWithKey f l
 
 -- * Traversals
 
-map :: (a -> b) -> POMap k a -> POMap k b
-map f (POMap n chains) = POMap n (fmap (fmap f) chains)
+map :: SingIAreWeStrict s => Proxy# s -> (a -> b) -> POMap k a -> POMap k b
+map s f (POMap _ chains)
+  | Strict <- areWeStrict s = mkPOMap (fmap (Map.Strict.map f) chains)
+  | otherwise = mkPOMap (fmap (Map.Lazy.map f) chains)
 
 {-# NOINLINE [1] map #-}
 {-# RULES
-"map/map" forall f g xs . map f (map g xs) = map (f . g) xs
+"map/map" forall s f g xs . map s f (map s g xs) = map s (f . g) xs
  #-}
 
-mapWithKey :: (k -> a -> b) -> POMap k a -> POMap k b
-mapWithKey f (POMap n d) = POMap n (fmap (Map.mapWithKey f) d)
+mapWithKey :: SingIAreWeStrict s => Proxy# s -> (k -> a -> b) -> POMap k a -> POMap k b
+mapWithKey s f (POMap _ d)
+  | Strict <- areWeStrict s = mkPOMap (fmap (Map.Strict.mapWithKey f) d)
+  | otherwise = mkPOMap (fmap (Map.Lazy.mapWithKey f) d)
 
 {-# NOINLINE [1] mapWithKey #-}
 {-# RULES
-"mapWithKey/mapWithKey" forall f g xs . mapWithKey f (mapWithKey g xs) =
-  mapWithKey (\k a -> f k (g k a)) xs
-"mapWithKey/map" forall f g xs . mapWithKey f (map g xs) =
-  mapWithKey (\k a -> f k (g a)) xs
-"map/mapWithKey" forall f g xs . map f (mapWithKey g xs) =
-  mapWithKey (\k a -> f (g k a)) xs
+"mapWithKey/mapWithKey" forall s f g xs . mapWithKey s f (mapWithKey s g xs) =
+  mapWithKey s (\k a -> f k (g k a)) xs
+"mapWithKey/map" forall s f g xs . mapWithKey s f (map s g xs) =
+  mapWithKey s (\k a -> f k (g a)) xs
+"map/mapWithKey" forall s f g xs . map s f (mapWithKey s g xs) =
+  mapWithKey s (\k a -> f (g k a)) xs
  #-}
 
-traverseWithKey :: Applicative t => (k -> a -> t b) -> POMap k a -> t (POMap k b)
-traverseWithKey f (POMap n d) = POMap n <$> traverse (Map.traverseWithKey f) d
+traverseWithKey :: (Applicative t, SingIAreWeStrict s) => Proxy# s -> (k -> a -> t b) -> POMap k a -> t (POMap k b)
+traverseWithKey s f (POMap _ d)
+  | Strict <- areWeStrict s = mkPOMap <$> traverse (Map.Strict.traverseWithKey f) d
+  | otherwise = mkPOMap <$> traverse (Map.Lazy.traverseWithKey f) d
 {-# INLINE traverseWithKey #-}
 
-mapAccum :: (a -> b -> (a, c)) -> a -> POMap k b -> (a, POMap k c)
-mapAccum f = inline mapAccumWithKey (\a _ b -> f a b)
+mapAccum :: SingIAreWeStrict s => Proxy# s -> (a -> b -> (a, c)) -> a -> POMap k b -> (a, POMap k c)
+mapAccum s f = inline mapAccumWithKey s (\a _ b -> f a b)
 
-mapAccumWithKey :: (a -> k -> b -> (a, c)) -> a -> POMap k b -> (a, POMap k c)
-mapAccumWithKey f acc (POMap n chains) = (acc', POMap n chains')
+mapAccumWithKey :: SingIAreWeStrict s => Proxy# s -> (a -> k -> b -> (a, c)) -> a -> POMap k b -> (a, POMap k c)
+mapAccumWithKey s f acc (POMap _ chains) = (acc', mkPOMap chains')
   where
-    (acc', chains') = List.mapAccumL (Map.mapAccumWithKey f) acc chains
+    (acc', chains')
+      | Strict <- areWeStrict s = List.mapAccumL (Map.Strict.mapAccumWithKey f) acc chains
+      | otherwise = List.mapAccumL (Map.Lazy.mapAccumWithKey f) acc chains
 
 mapKeys :: PartialOrd k2 => (k1 -> k2) -> POMap k1 v -> POMap k2 v
 mapKeys f = fromList (proxy# :: Proxy# 'Lazy) . fmap (first f) . toList
 
-mapKeysWith :: PartialOrd k2 => (v -> v -> v) -> (k1 -> k2) -> POMap k1 v -> POMap k2 v
-mapKeysWith c f = fromListWith (proxy# :: Proxy# 'Lazy) c . fmap (first f) . toList
+mapKeysWith :: (PartialOrd k2, SingIAreWeStrict s) => Proxy# s -> (v -> v -> v) -> (k1 -> k2) -> POMap k1 v -> POMap k2 v
+mapKeysWith s c f = fromListWith s c . fmap (first f) . toList
 
 mapKeysMonotonic :: (k1 -> k2) -> POMap k1 v -> POMap k2 v
-mapKeysMonotonic f (POMap n d) = POMap n (fmap (Map.mapKeysMonotonic f) d)
+mapKeysMonotonic f (POMap _ d) = mkPOMap (fmap (Map.mapKeysMonotonic f) d)
 
 --
 -- * Folds
@@ -741,8 +751,10 @@ mapMaybe f = mapMaybeWithKey (const f)
 mapMaybeWithKey :: (k -> a -> Maybe b) -> POMap k a -> POMap k b
 mapMaybeWithKey f (POMap _ d) = mkPOMap (Map.mapMaybeWithKey f <$> d)
 
-traverseMaybeWithKey :: Applicative f => (k -> a -> f (Maybe b)) -> POMap k a -> f (POMap k b)
-traverseMaybeWithKey f (POMap _ d) = mkPOMap <$> traverse (Map.traverseMaybeWithKey f) d
+traverseMaybeWithKey :: (Applicative f, SingIAreWeStrict s) => Proxy# s -> (k -> a -> f (Maybe b)) -> POMap k a -> f (POMap k b)
+traverseMaybeWithKey s f (POMap _ d)
+  | Strict <- areWeStrict s = mkPOMap <$> traverse (Map.Strict.traverseMaybeWithKey f) d
+  | otherwise = mkPOMap <$> traverse (Map.Lazy.traverseMaybeWithKey f) d
 
 mapEither :: (a -> Either b c) -> POMap k a -> (POMap k b, POMap k c)
 mapEither p = mapEitherWithKey (const p)

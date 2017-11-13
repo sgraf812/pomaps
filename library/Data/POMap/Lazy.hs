@@ -63,14 +63,14 @@ module Data.POMap.Lazy (
 
   -- * Traversal
   -- ** Map
-  , Impl.map
-  , Impl.mapWithKey
-  , Impl.traverseWithKey
-  , Impl.traverseMaybeWithKey
-  , Impl.mapAccum
-  , Impl.mapAccumWithKey
+  , map
+  , mapWithKey
+  , traverseWithKey
+  , traverseMaybeWithKey
+  , mapAccum
+  , mapAccumWithKey
   , Impl.mapKeys
-  , Impl.mapKeysWith
+  , mapKeysWith
   , Impl.mapKeysMonotonic
 
   -- * Folds
@@ -121,6 +121,7 @@ import           Data.Map.Internal   (AreWeStrict (..))
 import           Data.POMap.Internal (POMap (..))
 import qualified Data.POMap.Internal as Impl
 import           GHC.Exts            (Proxy#, proxy#)
+import           Prelude             hiding (map)
 
 singleton :: k -> v -> POMap k v
 singleton = Impl.singleton (proxy# :: Proxy# 'Lazy)
@@ -204,3 +205,31 @@ fromListWith = Impl.fromListWith (proxy# :: Proxy# 'Lazy)
 fromListWithKey :: PartialOrd k => (k -> v -> v -> v) -> [(k, v)] -> POMap k v
 fromListWithKey = Impl.fromListWithKey (proxy# :: Proxy# 'Lazy)
 {-# INLINE fromListWithKey #-}
+
+map :: PartialOrd k => (a -> b) -> POMap k a -> POMap k b
+map = Impl.map (proxy# :: Proxy# 'Lazy)
+{-# INLINE map #-}
+
+mapWithKey :: PartialOrd k => (k -> a -> b) -> POMap k a -> POMap k b
+mapWithKey = Impl.mapWithKey (proxy# :: Proxy# 'Lazy)
+{-# INLINE mapWithKey #-}
+
+traverseWithKey :: Applicative t => (k -> a -> t b) -> POMap k a -> t (POMap k b)
+traverseWithKey = Impl.traverseWithKey (proxy# :: Proxy# 'Lazy)
+{-# INLINE traverseWithKey #-}
+
+mapAccum :: (a -> b -> (a, c)) -> a -> POMap k b -> (a, POMap k c)
+mapAccum = Impl.mapAccum (proxy# :: Proxy# 'Lazy)
+{-# INLINE mapAccum #-}
+
+mapAccumWithKey :: (a -> k -> b -> (a, c)) -> a -> POMap k b -> (a, POMap k c)
+mapAccumWithKey = Impl.mapAccumWithKey (proxy# :: Proxy# 'Lazy)
+{-# INLINE mapAccumWithKey #-}
+
+mapKeysWith :: PartialOrd k2 => (v -> v -> v) -> (k1 -> k2) -> POMap k1 v -> POMap k2 v
+mapKeysWith = Impl.mapKeysWith (proxy# :: Proxy# 'Lazy)
+{-# INLINE mapKeysWith #-}
+
+traverseMaybeWithKey :: Applicative t => (k -> a -> t (Maybe b)) -> POMap k a -> t (POMap k b)
+traverseMaybeWithKey = Impl.traverseMaybeWithKey (proxy# :: Proxy# 'Strict)
+{-# INLINE traverseMaybeWithKey #-}
