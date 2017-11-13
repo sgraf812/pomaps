@@ -5,9 +5,14 @@ import qualified Test.Tasty
 -- Hspec is one of the providers for Tasty. It provides a nice syntax for
 -- writing tests. Its website has more info: <https://hspec.github.io>.
 import qualified Data.POMap.Properties
+import qualified Data.POMap.Strictness
 import           Test.Tasty.Hspec
 
 main :: IO ()
 main = do
-    test <- testSpec "pomaps" (parallel Data.POMap.Properties.spec)
-    Test.Tasty.defaultMain test
+    props <- testSpec "properties" (parallel Data.POMap.Properties.spec)
+    strict <- testSpec "strictness" (parallel Data.POMap.Strictness.spec)
+    Test.Tasty.defaultMain $ Test.Tasty.testGroup "pomaps"
+      [ props
+      , strict
+      ]

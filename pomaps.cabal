@@ -68,6 +68,7 @@ test-suite pomaps-test-suite
     , tasty
     , tasty-hspec
     , tasty-quickcheck
+    , ChasingBottoms
   if flag(use-lattices)
     build-depends: 
       lattices < 2

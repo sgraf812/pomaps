@@ -402,7 +402,7 @@ alter s f = inline alterWithKey s (const f)
 {-# SPECIALIZE alter :: PartialOrd k => Proxy# 'Lazy -> (Maybe v -> Maybe v) -> k -> POMap k v -> POMap k v #-}
 
 alterWithKey :: (PartialOrd k, SingIAreWeStrict s) => Proxy# s -> (k -> Maybe v -> Maybe v) -> k -> POMap k v -> POMap k v
-alterWithKey s f k = mkPOMap . overChains handleChain oldWon newWon incomparable
+alterWithKey s f !k = mkPOMap . overChains handleChain oldWon newWon incomparable
   where
     handleChain = alterChain s f k
     oldWon chain chains' = chain : chains'
@@ -410,23 +410,21 @@ alterWithKey s f k = mkPOMap . overChains handleChain oldWon newWon incomparable
     incomparable decomp =
       case f k Nothing of
         Nothing -> decomp
-        Just v
-          | let chain = Map.singleton k v
-          -> seq' s chain (chain : decomp)
+        Just v  -> seq' s v (Map.singleton k v : decomp)
 {-# INLINABLE alterWithKey #-}
 {-# SPECIALIZE alterWithKey :: PartialOrd k => Proxy# 'Strict -> (k -> Maybe v -> Maybe v) -> k -> POMap k v -> POMap k v #-}
 {-# SPECIALIZE alterWithKey :: PartialOrd k => Proxy# 'Lazy -> (k -> Maybe v -> Maybe v) -> k -> POMap k v -> POMap k v #-}
 
 alterChain :: (PartialOrd k, SingIAreWeStrict s) => Proxy# s -> (k -> Maybe v -> Maybe v) -> k -> Map k v -> LookupResult (Map k v)
-alterChain s f !k = go
+alterChain s f k = go
   where
     go Tip = NotFound $ case f k Nothing of
-      Just v  -> seq' s v $ Map.singleton k v
+      Just v  -> seq' s v (Map.singleton k v)
       Nothing -> Tip
     go (Bin n k' v' l r) =
       case (k `leq` k', k' `leq` k) of
         (True, True) -> Found $ case f k (Just v') of
-          Just v  -> seq' s v $ Bin n k' v l r
+          Just v  -> seq' s v (Bin n k' v l r)
           Nothing -> Tip
         (True, False)  -> oneShot (\l' -> Map.balanceL k' v' l' r) <$> go l
         (False, True)  -> oneShot (\r' -> Map.balanceR k' v' l r') <$> go r
@@ -450,23 +448,21 @@ alterLookupWithKey s f !k
     incomparable decomp =
       (Nothing, case f k Nothing of
         Nothing -> decomp
-        Just v
-          | let chain = Map.singleton k v
-          -> seq' s chain (chain : decomp))
+        Just v  -> seq' s v (Map.singleton k v : decomp))
 {-# INLINABLE alterLookupWithKey #-}
 {-# SPECIALIZE alterLookupWithKey :: PartialOrd k => Proxy# 'Strict -> (k -> Maybe v -> Maybe v) -> k -> POMap k v -> (Maybe v, POMap k v) #-}
 {-# SPECIALIZE alterLookupWithKey :: PartialOrd k => Proxy# 'Lazy -> (k -> Maybe v -> Maybe v) -> k -> POMap k v -> (Maybe v, POMap k v) #-}
 
 alterLookupChain :: (PartialOrd k, SingIAreWeStrict s) => Proxy# s -> (k -> Maybe v -> Maybe v) -> k -> Map k v -> LookupResult (Maybe v, Map k v)
-alterLookupChain s f !k = go
+alterLookupChain s f k = go
   where
     go Tip = NotFound (Nothing, case f k Nothing of
-      Just v  -> seq' s v $ Map.singleton k v
+      Just v  -> seq' s v (Map.singleton k v)
       Nothing -> Tip)
     go (Bin n k' v' l r) =
       case (k `leq` k', k' `leq` k) of
         (True, True) -> Found (Just v', case f k (Just v') of
-          Just v  -> seq' s v $ Bin n k' v l r
+          Just v  -> seq' s v (Bin n k' v l r)
           Nothing -> Tip)
         (True, False)  -> second (oneShot (\l' -> Map.balanceL k' v' l' r)) <$> go l
         (False, True)  -> second (oneShot (\r' -> Map.balanceR k' v' l r')) <$> go r
@@ -480,7 +476,7 @@ alterF
   -> k
   -> POMap k v
   -> f (POMap k v)
-alterF s f k = fmap mkPOMap . overChains handleChain oldWon newWon incomparable
+alterF s f !k = fmap mkPOMap . overChains handleChain oldWon newWon incomparable
   where
     handleChain = alterFChain s k
     -- prepends the unaltered chain to the altered tail
@@ -493,9 +489,7 @@ alterF s f k = fmap mkPOMap . overChains handleChain oldWon newWon incomparable
     incomparable decomp = f Nothing <#> \mv ->
       case mv of
         Nothing -> decomp
-        Just v
-          | let chain = Map.singleton k v
-          -> seq' s chain (chain : decomp)
+        Just v  -> seq' s v (Map.singleton k v : decomp)
 {-# INLINABLE alterF #-}
 {-# SPECIALIZE alterF :: (Functor f, PartialOrd k) => Proxy# 'Strict -> (Maybe v -> f (Maybe v)) -> k -> POMap k v -> f (POMap k v) #-}
 {-# SPECIALIZE alterF :: (Functor f, PartialOrd k) => Proxy# 'Lazy -> (Maybe v -> f (Maybe v)) -> k -> POMap k v -> f (POMap k v) #-}
@@ -508,7 +502,7 @@ alterFChain
   -> k
   -> Map k v
   -> LookupResult ((Maybe v -> f (Maybe v)) -> f (Map k v))
-alterFChain s !k = go
+alterFChain s k = go
   where
     -- This is going to be reaaally crazy. Maybe we could use some ContT for
     -- this, I don't know...
@@ -521,14 +515,14 @@ alterFChain s !k = go
     go Tip =
       ret NotFound Nothing . oneShot $ \mv ->
         case mv of
-          Just v  -> seq' s v $ Map.singleton k v
+          Just v  -> seq' s v (Map.singleton k v)
           Nothing -> Tip
     go (Bin n k' v l r) =
       case (k `leq` k', k' `leq` k) of
         (True, True)   ->
           ret Found (Just v) . oneShot $ \mv ->
             case mv of
-              Just v' -> seq' s v $ Bin n k v' l r
+              Just v' -> seq' s v' (Bin n k v' l r)
               Nothing -> Tip
         (True, False)  -> lift (go l) . oneShot $ \l' -> Map.balanceL k' v l' r
         (False, True)  -> lift (go r) . oneShot $ \r' -> Map.balanceL k' v l r'
