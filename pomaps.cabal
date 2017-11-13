@@ -6,6 +6,7 @@ homepage:       https://github.com/sgraf812/pomaps#readme
 bug-reports:    https://github.com/sgraf812/pomaps/issues
 maintainer:     Sebastian Graf
 license:        MIT
+license-file:   LICENSE.md
 build-type:     Simple
 cabal-version:  >= 1.10
 
