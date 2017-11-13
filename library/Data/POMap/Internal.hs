@@ -611,17 +611,17 @@ map :: SingIAreWeStrict s => Proxy# s -> (a -> b) -> POMap k a -> POMap k b
 map s f (POMap _ chains)
   | Strict <- areWeStrict s = mkPOMap (fmap (Map.Strict.map f) chains)
   | otherwise = mkPOMap (fmap (Map.Lazy.map f) chains)
-
 {-# NOINLINE [1] map #-}
 {-# RULES
 "map/map" forall s f g xs . map s f (map s g xs) = map s (f . g) xs
  #-}
+{-# SPECIALIZE map :: Proxy# 'Strict -> (a -> b) -> POMap k a -> POMap k b #-}
+{-# SPECIALIZE map :: Proxy# 'Lazy -> (a -> b) -> POMap k a -> POMap k b #-}
 
 mapWithKey :: SingIAreWeStrict s => Proxy# s -> (k -> a -> b) -> POMap k a -> POMap k b
 mapWithKey s f (POMap _ d)
   | Strict <- areWeStrict s = mkPOMap (fmap (Map.Strict.mapWithKey f) d)
   | otherwise = mkPOMap (fmap (Map.Lazy.mapWithKey f) d)
-
 {-# NOINLINE [1] mapWithKey #-}
 {-# RULES
 "mapWithKey/mapWithKey" forall s f g xs . mapWithKey s f (mapWithKey s g xs) =
@@ -631,15 +631,22 @@ mapWithKey s f (POMap _ d)
 "map/mapWithKey" forall s f g xs . map s f (mapWithKey s g xs) =
   mapWithKey s (\k a -> f (g k a)) xs
  #-}
+{-# SPECIALIZE mapWithKey :: Proxy# 'Strict -> (k -> a -> b) -> POMap k a -> POMap k b #-}
+{-# SPECIALIZE mapWithKey :: Proxy# 'Lazy -> (k -> a -> b) -> POMap k a -> POMap k b #-}
 
 traverseWithKey :: (Applicative t, SingIAreWeStrict s) => Proxy# s -> (k -> a -> t b) -> POMap k a -> t (POMap k b)
 traverseWithKey s f (POMap _ d)
   | Strict <- areWeStrict s = mkPOMap <$> traverse (Map.Strict.traverseWithKey f) d
   | otherwise = mkPOMap <$> traverse (Map.Lazy.traverseWithKey f) d
-{-# INLINE traverseWithKey #-}
+{-# INLINABLE traverseWithKey #-}
+{-# SPECIALIZE traverseWithKey :: Applicative t => Proxy# 'Strict -> (k -> a -> t b) -> POMap k a -> t (POMap k b) #-}
+{-# SPECIALIZE traverseWithKey :: Applicative t => Proxy# 'Lazy -> (k -> a -> t b) -> POMap k a -> t (POMap k b) #-}
 
 mapAccum :: SingIAreWeStrict s => Proxy# s -> (a -> b -> (a, c)) -> a -> POMap k b -> (a, POMap k c)
 mapAccum s f = inline mapAccumWithKey s (\a _ b -> f a b)
+{-# INLINABLE mapAccum #-}
+{-# SPECIALIZE mapAccum :: Proxy# 'Strict -> (a -> b -> (a, c)) -> a -> POMap k b -> (a, POMap k c) #-}
+{-# SPECIALIZE mapAccum :: Proxy# 'Lazy -> (a -> b -> (a, c)) -> a -> POMap k b -> (a, POMap k c) #-}
 
 mapAccumWithKey :: SingIAreWeStrict s => Proxy# s -> (a -> k -> b -> (a, c)) -> a -> POMap k b -> (a, POMap k c)
 mapAccumWithKey s f acc (POMap _ chains) = (acc', mkPOMap chains')
@@ -647,12 +654,18 @@ mapAccumWithKey s f acc (POMap _ chains) = (acc', mkPOMap chains')
     (acc', chains')
       | Strict <- areWeStrict s = List.mapAccumL (Map.Strict.mapAccumWithKey f) acc chains
       | otherwise = List.mapAccumL (Map.Lazy.mapAccumWithKey f) acc chains
+{-# INLINABLE mapAccumWithKey #-}
+{-# SPECIALIZE mapAccumWithKey :: Proxy# 'Strict -> (a -> k -> b -> (a, c)) -> a -> POMap k b -> (a, POMap k c) #-}
+{-# SPECIALIZE mapAccumWithKey :: Proxy# 'Lazy -> (a -> k -> b -> (a, c)) -> a -> POMap k b -> (a, POMap k c) #-}
 
 mapKeys :: PartialOrd k2 => (k1 -> k2) -> POMap k1 v -> POMap k2 v
 mapKeys f = fromList (proxy# :: Proxy# 'Lazy) . fmap (first f) . toList
 
 mapKeysWith :: (PartialOrd k2, SingIAreWeStrict s) => Proxy# s -> (v -> v -> v) -> (k1 -> k2) -> POMap k1 v -> POMap k2 v
 mapKeysWith s c f = fromListWith s c . fmap (first f) . toList
+{-# INLINABLE mapKeysWith #-}
+{-# SPECIALIZE mapKeysWith :: PartialOrd k2 => Proxy# 'Strict -> (v -> v -> v) -> (k1 -> k2) -> POMap k1 v -> POMap k2 v #-}
+{-# SPECIALIZE mapKeysWith :: PartialOrd k2 => Proxy# 'Lazy -> (v -> v -> v) -> (k1 -> k2) -> POMap k1 v -> POMap k2 v #-}
 
 mapKeysMonotonic :: (k1 -> k2) -> POMap k1 v -> POMap k2 v
 mapKeysMonotonic f (POMap _ d) = mkPOMap (fmap (Map.mapKeysMonotonic f) d)
@@ -747,19 +760,31 @@ partitionWithKey p (POMap _ d)
 
 mapMaybe :: SingIAreWeStrict s => Proxy# s -> (a -> Maybe b) -> POMap k a -> POMap k b
 mapMaybe s f = mapMaybeWithKey s (const f)
+{-# INLINABLE mapMaybe #-}
+{-# SPECIALIZE mapMaybe :: Proxy# 'Strict -> (a -> Maybe b) -> POMap k a -> POMap k b #-}
+{-# SPECIALIZE mapMaybe :: Proxy# 'Lazy -> (a -> Maybe b) -> POMap k a -> POMap k b #-}
 
 mapMaybeWithKey :: SingIAreWeStrict s => Proxy# s -> (k -> a -> Maybe b) -> POMap k a -> POMap k b
 mapMaybeWithKey s f (POMap _ d)
   | Strict <- areWeStrict s = mkPOMap (Map.Strict.mapMaybeWithKey f <$> d)
   | otherwise = mkPOMap (Map.Lazy.mapMaybeWithKey f <$> d)
+{-# INLINABLE mapMaybeWithKey #-}
+{-# SPECIALIZE mapMaybeWithKey :: Proxy# 'Strict -> (k -> a -> Maybe b) -> POMap k a -> POMap k b #-}
+{-# SPECIALIZE mapMaybeWithKey :: Proxy# 'Lazy -> (k -> a -> Maybe b) -> POMap k a -> POMap k b #-}
 
 traverseMaybeWithKey :: (Applicative f, SingIAreWeStrict s) => Proxy# s -> (k -> a -> f (Maybe b)) -> POMap k a -> f (POMap k b)
 traverseMaybeWithKey s f (POMap _ d)
   | Strict <- areWeStrict s = mkPOMap <$> traverse (Map.Strict.traverseMaybeWithKey f) d
   | otherwise = mkPOMap <$> traverse (Map.Lazy.traverseMaybeWithKey f) d
+{-# INLINABLE traverseMaybeWithKey #-}
+{-# SPECIALIZE traverseMaybeWithKey :: Applicative f => Proxy# 'Strict -> (k -> a -> f (Maybe b)) -> POMap k a -> f (POMap k b) #-}
+{-# SPECIALIZE traverseMaybeWithKey :: Applicative f => Proxy# 'Lazy -> (k -> a -> f (Maybe b)) -> POMap k a -> f (POMap k b) #-}
 
 mapEither :: SingIAreWeStrict s => Proxy# s -> (a -> Either b c) -> POMap k a -> (POMap k b, POMap k c)
 mapEither s p = mapEitherWithKey s (const p)
+{-# INLINABLE mapEither #-}
+{-# SPECIALIZE mapEither :: Proxy# 'Strict -> (a -> Either b c) -> POMap k a -> (POMap k b, POMap k c) #-}
+{-# SPECIALIZE mapEither :: Proxy# 'Lazy -> (a -> Either b c) -> POMap k a -> (POMap k b, POMap k c) #-}
 
 mapEitherWithKey :: SingIAreWeStrict s => Proxy# s -> (k -> a -> Either b c) -> POMap k a -> (POMap k b, POMap k c)
 mapEitherWithKey s p (POMap _ d)
@@ -771,6 +796,9 @@ mapEitherWithKey s p (POMap _ d)
     mewk
       | Strict <- areWeStrict s = Map.Strict.mapEitherWithKey
       | otherwise = Map.Lazy.mapEitherWithKey
+{-# INLINABLE mapEitherWithKey #-}
+{-# SPECIALIZE mapEitherWithKey :: Proxy# 'Strict -> (k -> a -> Either b c) -> POMap k a -> (POMap k b, POMap k c) #-}
+{-# SPECIALIZE mapEitherWithKey :: Proxy# 'Lazy -> (k -> a -> Either b c) -> POMap k a -> (POMap k b, POMap k c) #-}
 
 -- TODO: Maybe `split*` variants, returning a triple, but that would
 -- be rather inefficient anyway.
