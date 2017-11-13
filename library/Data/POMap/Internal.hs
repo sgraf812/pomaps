@@ -63,7 +63,7 @@ chainDecomposition (POMap _ cd) = cd
 
 instance Functor (POMap k) where
   fmap = map (proxy# :: Proxy# 'Lazy)
-  a <$ (POMap n d) = mkPOMap (fmap (a <$) d)
+  a <$ (POMap _ d) = mkPOMap (fmap (a <$) d)
 
 instance Foldable (POMap k) where
   foldr f acc = List.foldr (flip (Map.foldr f)) acc . chainDecomposition

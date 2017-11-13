@@ -206,11 +206,11 @@ fromListWithKey :: PartialOrd k => (k -> v -> v -> v) -> [(k, v)] -> POMap k v
 fromListWithKey = Impl.fromListWithKey (proxy# :: Proxy# 'Lazy)
 {-# INLINE fromListWithKey #-}
 
-map :: PartialOrd k => (a -> b) -> POMap k a -> POMap k b
+map :: (a -> b) -> POMap k a -> POMap k b
 map = Impl.map (proxy# :: Proxy# 'Lazy)
 {-# INLINE map #-}
 
-mapWithKey :: PartialOrd k => (k -> a -> b) -> POMap k a -> POMap k b
+mapWithKey :: (k -> a -> b) -> POMap k a -> POMap k b
 mapWithKey = Impl.mapWithKey (proxy# :: Proxy# 'Lazy)
 {-# INLINE mapWithKey #-}
 
@@ -231,5 +231,5 @@ mapKeysWith = Impl.mapKeysWith (proxy# :: Proxy# 'Lazy)
 {-# INLINE mapKeysWith #-}
 
 traverseMaybeWithKey :: Applicative t => (k -> a -> t (Maybe b)) -> POMap k a -> t (POMap k b)
-traverseMaybeWithKey = Impl.traverseMaybeWithKey (proxy# :: Proxy# 'Strict)
+traverseMaybeWithKey = Impl.traverseMaybeWithKey (proxy# :: Proxy# 'Lazy)
 {-# INLINE traverseMaybeWithKey #-}

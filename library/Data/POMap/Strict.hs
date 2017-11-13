@@ -206,11 +206,11 @@ fromListWithKey :: PartialOrd k => (k -> v -> v -> v) -> [(k, v)] -> POMap k v
 fromListWithKey = Impl.fromListWithKey (proxy# :: Proxy# 'Strict)
 {-# INLINE fromListWithKey #-}
 
-map :: PartialOrd k => (a -> b) -> POMap k a -> POMap k b
+map :: (a -> b) -> POMap k a -> POMap k b
 map = Impl.map (proxy# :: Proxy# 'Strict)
 {-# INLINE map #-}
 
-mapWithKey :: PartialOrd k => (k -> a -> b) -> POMap k a -> POMap k b
+mapWithKey :: (k -> a -> b) -> POMap k a -> POMap k b
 mapWithKey = Impl.mapWithKey (proxy# :: Proxy# 'Strict)
 {-# INLINE mapWithKey #-}
 
