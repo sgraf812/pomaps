@@ -64,8 +64,8 @@ matrix:
 
   # This just checks style rules
   - env: BUILD=style GHCVER=8.0.2 STACK_YAML=stack.yaml
-    compiler: ": #stack 8.0.2"
-    addons: {apt: {packages: [ghc-8.0.2], sources: [hvr-ghc]}}
+    compiler: ": #stack 8.0.2 style"
+    addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
 
   # Nightly builds are allowed to fail
   - env: BUILD=stack ARGS="--resolver nightly"
