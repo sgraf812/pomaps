@@ -91,6 +91,8 @@ benchmark pomaps-benchmarks
       base
     , pomaps
     , criterion
+    , deepseq
+    , random
   default-language: Haskell2010
 
 
