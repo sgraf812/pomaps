@@ -35,6 +35,7 @@ library
       base >= 4.6.0.0 && < 4.13
     -- oneShot
     , ghc-prim >= 0.4 && < 0.6
+    , deepseq >= 1.1 && < 1.5
     -- We depend on the internal modules of containers, 
     -- so we have to track development real close.
     -- Data.Map.Internal is only available since 0.5.9,

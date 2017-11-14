@@ -12,6 +12,7 @@ module Data.POMap.Internal where
 
 import           Algebra.PartialOrd
 import           Control.Arrow      (first, second, (***))
+import           Control.DeepSeq    (NFData (rnf))
 import qualified Data.List          as List
 import           Data.Map.Internal  (AreWeStrict (..), Map (..))
 import qualified Data.Map.Internal  as Map
@@ -24,6 +25,8 @@ import           GHC.Exts           (Proxy#, inline, proxy#)
 import qualified GHC.Exts
 import           GHC.Magic          (oneShot)
 import           Prelude            hiding (lookup, map)
+import           Text.Read          (Lexeme (Ident), Read (..), lexP, parens,
+                                     prec, readListPrecDefault)
 
 class SingIAreWeStrict (s :: AreWeStrict) where
   areWeStrict :: Proxy# s -> AreWeStrict
@@ -43,9 +46,7 @@ seq' p a b
 seqList :: [a] -> [a]
 seqList xs = foldr seq xs xs
 
-data POMap k v
-  = POMap !Int ![Map k v]
-  deriving (Show, Read) -- TODO: Implement these by hand
+data POMap k v = POMap !Int ![Map k v]
 
 type role POMap nominal representational
 
@@ -60,6 +61,32 @@ chainDecomposition (POMap _ cd) = cd
 --
 -- * Instances
 --
+
+instance (Show k, Show v) => Show (POMap k v) where
+  showsPrec d m = showParen (d > 10) $
+    showString "fromList " . shows (toList m)
+
+instance (PartialOrd k, Read k, Read e) => Read (POMap k e) where
+  readPrec = parens $ prec 10 $ do
+    Ident "fromList" <- lexP
+    xs <- readPrec
+    return (fromList (proxy# :: Proxy# 'Lazy) xs)
+
+  readListPrec = readListPrecDefault
+
+-- | /O(n^2)/.
+instance (PartialOrd k, Eq v) => Eq (POMap k v) where
+  a == b
+    | size a /= size b = False
+    | otherwise = isSubmapOf a b && isSubmapOf b a
+
+instance (NFData k, NFData v) => NFData (POMap k v) where
+  rnf (POMap _ d) = rnf d
+
+instance PartialOrd k => GHC.Exts.IsList (POMap k v) where
+  type Item (POMap k v) = (k, v)
+  fromList = fromList (proxy# :: Proxy# 'Lazy)
+  toList = toList
 
 instance Functor (POMap k) where
   fmap = map (proxy# :: Proxy# 'Lazy)
@@ -80,17 +107,6 @@ instance Foldable (POMap k) where
 instance Traversable (POMap k) where
   traverse f = traverseWithKey (proxy# :: Proxy# 'Lazy) (const f)
   {-# INLINE traverse #-}
-
-instance PartialOrd k => GHC.Exts.IsList (POMap k v) where
-  type Item (POMap k v) = (k, v)
-  fromList = fromList (proxy# :: Proxy# 'Lazy)
-  toList = toList
-
--- | /O(n^2)/.
-instance (PartialOrd k, Eq v) => Eq (POMap k v) where
-  a == b
-    | size a /= size b = False
-    | otherwise = isSubmapOf a b && isSubmapOf b a
 
 --
 -- * Query
