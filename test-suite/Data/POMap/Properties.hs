@@ -7,6 +7,7 @@ import           Algebra.PartialOrd
 import           Control.Arrow           (first, (&&&), (***))
 import           Control.Monad           (guard)
 import           Data.Bifunctor          (bimap)
+import           Data.Coerce
 import qualified Data.Either             as Either
 import           Data.Foldable           hiding (foldl', foldr', toList)
 import           Data.Function           (on)
@@ -497,8 +498,9 @@ spec =
           it "foldl f z m = appEndo (getDual (foldMap (Dual . Endo . flip f) m)) z" $ property $ \(m :: DivMap Int) ->
             foldl f z m `shouldBe` appEndo (getDual (foldMap (Dual . Endo . flip f) m)) z
         describe "fold" $
-          it "fold = foldMap id" $ property $ \(m :: DivMap (Sum Int)) ->
-            fold m `shouldBe` foldMap id m
+          it "fold = foldMap id" $ property $ \(m :: DivMap Int) ->
+            let m' = coerce m :: DivMap (Sum Int)
+            in fold m' `shouldBe` foldMap id m'
 
       describe "Traversable" $ do
         describe "traverse" $ do

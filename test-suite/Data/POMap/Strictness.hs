@@ -6,7 +6,6 @@ module Data.POMap.Strictness where
 import           Data.Function                (on)
 import           Data.Functor.Identity
 import qualified Data.List                    as List
-import qualified Data.Map.Strict              as SMap
 import           Data.Ord                     (comparing)
 import           Data.POMap.Arbitrary         ()
 import           Data.POMap.Divisibility
