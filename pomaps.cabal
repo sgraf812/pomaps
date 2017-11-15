@@ -29,10 +29,10 @@ flag use-lattices
 
 library
   hs-source-dirs:
-      library
+      src
   ghc-options: -Wall
   build-depends:
-      base >= 4.6.0.0 && < 4.13
+      base >= 4.6.0.0 && < 4.11
     -- oneShot
     , ghc-prim >= 0.4 && < 0.6
     , deepseq >= 1.1 && < 1.5
@@ -57,11 +57,11 @@ library
       Algebra.PartialOrd
   default-language: Haskell2010
 
-test-suite pomaps-test-suite
+test-suite unittests
   type: exitcode-stdio-1.0
   main-is: Main.hs
   hs-source-dirs:
-      test-suite
+      tests
   ghc-options: -Wall -rtsopts -threaded -with-rtsopts=-N
   build-depends:
       base
@@ -81,11 +81,23 @@ test-suite pomaps-test-suite
       Data.POMap.Strictness
   default-language: Haskell2010
 
+test-suite doctests
+  type: exitcode-stdio-1.0
+  main-is: doctest-driver.hs
+  hs-source-dirs:     
+      tests
+  ghc-options: -threaded
+  build-depends:      
+      base >4 && <5
+    , doctest
+    , Glob
+  default-language:   Haskell2010
+
 benchmark pomaps-benchmarks
   type: exitcode-stdio-1.0
   main-is: Main.hs
   hs-source-dirs:
-      benchmark
+      bench
   ghc-options: -Wall -rtsopts -threaded -with-rtsopts=-N
   build-depends:
       base
