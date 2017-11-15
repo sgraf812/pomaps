@@ -3,6 +3,7 @@
 {-# LANGUAGE DeriveFunctor       #-}
 {-# LANGUAGE GADTs               #-}
 {-# LANGUAGE KindSignatures      #-}
+{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE MagicHash           #-}
 {-# LANGUAGE MonadComprehensions #-}
 {-# LANGUAGE RoleAnnotations     #-}
@@ -504,10 +505,9 @@ alterF s f !k = fmap mkPOMap . overChains handleChain oldWon newWon incomparable
     (<#>) = flip (<$>)
     -- prepends a new chain in the incomparable case if
     -- the alteration function produces a value
-    incomparable decomp = f Nothing <#> \mv ->
-      case mv of
-        Nothing -> decomp
-        Just v  -> seq' s v (Map.singleton k v : decomp)
+    incomparable decomp = f Nothing <#> \case
+      Nothing -> decomp
+      Just v  -> seq' s v (Map.singleton k v : decomp)
 {-# INLINABLE alterF #-}
 {-# SPECIALIZE alterF :: (Functor f, PartialOrd k) => Proxy# 'Strict -> (Maybe v -> f (Maybe v)) -> k -> POMap k v -> f (POMap k v) #-}
 {-# SPECIALIZE alterF :: (Functor f, PartialOrd k) => Proxy# 'Lazy -> (Maybe v -> f (Maybe v)) -> k -> POMap k v -> f (POMap k v) #-}
@@ -531,17 +531,15 @@ alterFChain s k = go
     ret res val cont = res (oneShot (\f -> cont <$> f val))
     lift sub cont = oneShot (\a f -> cont <$> a f) <$> sub
     go Tip =
-      ret NotFound Nothing . oneShot $ \mv ->
-        case mv of
-          Just v  -> seq' s v (Map.singleton k v)
-          Nothing -> Tip
+      ret NotFound Nothing . oneShot $ \case
+        Just v  -> seq' s v (Map.singleton k v)
+        Nothing -> Tip
     go (Bin n k' v l r) =
       case (k `leq` k', k' `leq` k) of
         (True, True)   ->
-          ret Found (Just v) . oneShot $ \mv ->
-            case mv of
-              Just v' -> seq' s v' (Bin n k v' l r)
-              Nothing -> Tip
+          ret Found (Just v) . oneShot $ \case
+            Just v' -> seq' s v' (Bin n k v' l r)
+            Nothing -> Tip
         (True, False)  -> lift (go l) . oneShot $ \l' -> Map.balanceL k' v l' r
         (False, True)  -> lift (go r) . oneShot $ \r' -> Map.balanceL k' v l r'
         (False, False) -> Incomparable

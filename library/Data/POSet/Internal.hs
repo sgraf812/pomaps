@@ -9,7 +9,6 @@ import           Data.POMap.Strict  (POMap)
 import qualified Data.POMap.Strict  as POMap
 import           GHC.Exts           (coerce)
 import qualified GHC.Exts
-import           Prelude            hiding (map)
 
 newtype POSet k
   = POSet (POMap k ())

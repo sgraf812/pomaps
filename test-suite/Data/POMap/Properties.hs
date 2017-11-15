@@ -331,7 +331,7 @@ spec =
       let f a k b = unDiv k + a + b
       it "foldlWithKey f z = foldl (\a (k, b) -> f a k b) z . mapWithKey (,)" $ property $ \(m :: DivMap Integer) ->
         foldlWithKey f 0 m `shouldBe` foldl (\a (k, b) -> f a k b) 0 (mapWithKey (,) m)
-    describe "foldMapWithKey" $ do
+    describe "foldMapWithKey" $
       it "foldMapWithKey (const f) = foldMap f" $ property $ \(m :: DivMap Int) ->
         foldMapWithKey (const Sum) m `shouldBe` foldMap Sum m
 

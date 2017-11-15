@@ -1,5 +1,4 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# LANGUAGE TypeApplications #-}
 module Data.POMap.Arbitrary where
 
 import           Algebra.PartialOrd

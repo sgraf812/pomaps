@@ -61,6 +61,12 @@
 - ignore: # This happens in top-level RULE pragmas, a bug in hlint
     name: Use map once
     within: Data.POMap.Internal
+- ignore:
+    name: Functor law # We want to test these, so it makes no sense to reduce
+    within: Data.POMap.Properties
+- ignore:
+    name: Use traverse # We want to test these, so it makes no sense to reduce
+    within: Data.POMap.Properties
 - ignore: {name: Use infix}
 
 
