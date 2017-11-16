@@ -733,19 +733,19 @@ toList = assocs
 -- TODO: keysSet, fromSet
 
 fromList :: (PartialOrd k, SingIAreWeStrict s) => Proxy# s -> [(k, v)] -> POMap k v
-fromList s = List.foldr (uncurry (insert s)) empty
+fromList s = List.foldl' (\m (k,v) -> insert s k v m) empty
 {-# INLINABLE fromList #-}
 {-# SPECIALIZE fromList :: PartialOrd k => Proxy# 'Strict -> [(k, v)] -> POMap k v #-}
 {-# SPECIALIZE fromList :: PartialOrd k => Proxy# 'Lazy -> [(k, v)] -> POMap k v #-}
 
 fromListWith :: (PartialOrd k, SingIAreWeStrict s) => Proxy# s -> (v -> v -> v) -> [(k, v)] -> POMap k v
-fromListWith s f = List.foldr (uncurry (insertWith s f)) empty
+fromListWith s f = List.foldl' (\m (k,v) -> insertWith s f k v m) empty
 {-# INLINABLE fromListWith #-}
 {-# SPECIALIZE fromListWith :: PartialOrd k => Proxy# 'Strict -> (v -> v -> v) -> [(k, v)] -> POMap k v #-}
 {-# SPECIALIZE fromListWith :: PartialOrd k => Proxy# 'Lazy -> (v -> v -> v) -> [(k, v)] -> POMap k v #-}
 
 fromListWithKey :: (PartialOrd k, SingIAreWeStrict s) => Proxy# s -> (k -> v -> v -> v) -> [(k, v)] -> POMap k v
-fromListWithKey s f = List.foldr (uncurry (insertWithKey s f)) empty
+fromListWithKey s f = List.foldl' (\m (k,v) -> insertWithKey s f k v m) empty
 {-# INLINABLE fromListWithKey #-}
 {-# SPECIALIZE fromListWithKey :: PartialOrd k => Proxy# 'Strict -> (k -> v -> v -> v) -> [(k, v)] -> POMap k v #-}
 {-# SPECIALIZE fromListWithKey :: PartialOrd k => Proxy# 'Lazy -> (k -> v -> v -> v) -> [(k, v)] -> POMap k v #-}

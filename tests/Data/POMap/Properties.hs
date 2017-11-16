@@ -370,20 +370,20 @@ spec =
       it "List.lookup k (toList m) = lookup k m" $ property $ \(m :: DivMap Int) k ->
         List.lookup k (toList m) `shouldBe` lookup k m
     describe "fromList" $
-      it "fromList = foldr (uncurry insert) empty" $ property $ \(xs :: [(Divisibility, Int)]) ->
-        fromList xs `shouldBe` foldr (uncurry insert) empty xs
+      it "fromList = foldl (\\m (k,v) -> insert k v m) empty" $ property $ \(xs :: [(Divisibility, Int)]) ->
+        fromList xs `shouldBe` foldl (\m (k,v) -> insert k v m) empty xs
     describe "fromListWith" $ do
       it "fromListWith const = fromList" $ property $ \(xs :: [(Divisibility, Int)]) ->
         fromListWith const xs `shouldBe` fromList xs
       let f old new = old + new
       it "fromListWith f = fromListWithKey (const f)" $ property $ \(xs :: [(Divisibility, Int)]) ->
         fromListWith f xs `shouldBe` fromListWithKey (const f) xs
-      it "fromListWith f = foldr (uncurry (insertWith f)) empty" $ property $ \(xs :: [(Divisibility, Int)]) ->
-        fromListWith f xs `shouldBe` foldr (uncurry (insertWith f)) empty xs
+      it "fromListWith f = foldl (\\m (k,v) -> insertWith f k v m) empty" $ property $ \(xs :: [(Divisibility, Int)]) ->
+        fromListWith f xs `shouldBe` foldl (\m (k,v) -> insertWith f k v m) empty xs
     describe "fromListWithKey" $ do
       let f k old new = unDiv k + old + new
-      it "fromListWithKey f = foldr (uncurry (insertWithKey f)) empty" $ property $ \(xs :: [(Divisibility, Integer)]) ->
-        fromListWithKey f xs `shouldBe` foldr (uncurry (insertWithKey f)) empty xs
+      it "fromListWithKey f = foldl (\\m (k,v) -> insertWithKey f k v m) empty" $ property $ \(xs :: [(Divisibility, Integer)]) ->
+        fromListWithKey f xs `shouldBe` foldl (\m (k,v) -> insertWithKey f k v m) empty xs
 
     describe "filter" $
       it "filter p = fromList . filter (p . snd) . toList" $ property $ \(m :: DivMap Int) ->
