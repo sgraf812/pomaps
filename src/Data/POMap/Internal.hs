@@ -29,6 +29,29 @@ import           Prelude            hiding (lookup, map)
 import           Text.Read          (Lexeme (Ident), Read (..), lexP, parens,
                                      prec, readListPrecDefault)
 
+-- $setup
+-- >>> :set -XGeneralizedNewtypeDeriving
+-- >>> import           Algebra.PartialOrd
+-- >>> import           Data.POMap.Lazy
+-- >>> import           Data.POMap.Internal
+-- >>> :{
+--   newtype Divisibility
+--     = Div Int
+--     deriving (Eq, Num)
+--   instance Show Divisibility where
+--     show (Div a) = show a
+--   instance PartialOrd Divisibility where
+--     Div a `leq` Div b = b `mod` a == 0
+--   type DivMap a = POMap Divisibility a
+--   default (Divisibility)
+-- :}
+
+-- | Allows us to abstract over value-strictness in a zero-cost manner.
+-- GHC should always be able to specialise the two instances of this and
+-- consequently inline 'areWeStrict'.
+--
+-- It's a little sad we can't just use regular singletons, for reasons
+-- outlined [here](https://stackoverflow.com/questions/45734362/specialization-of-singleton-parameters).
 class SingIAreWeStrict (s :: AreWeStrict) where
   areWeStrict :: Proxy# s -> AreWeStrict
 
@@ -38,6 +61,7 @@ instance SingIAreWeStrict 'Strict where
 instance SingIAreWeStrict 'Lazy where
   areWeStrict _ = Lazy
 
+-- | Should be inlined and specialised at all call sites.
 seq' :: SingIAreWeStrict s => Proxy# s -> a -> b -> b
 seq' p a b
   | Lazy <- areWeStrict p = b
@@ -47,10 +71,13 @@ seq' p a b
 seqList :: [a] -> [a]
 seqList xs = foldr seq xs xs
 
+-- | A map from partially-ordered keys @k@ to values @v@.
 data POMap k v = POMap !Int ![Map k v]
 
 type role POMap nominal representational
 
+-- | internal smart constructor so that we can be sure that we are always
+-- spine-strict and have appropriate size information.
 mkPOMap :: [Map k v] -> POMap k v
 mkPOMap decomp = POMap (foldr ((+) . Map.size) 0 decomp) (seqList decomp)
 {-# INLINE mkPOMap #-}
@@ -71,11 +98,11 @@ instance (PartialOrd k, Read k, Read e) => Read (POMap k e) where
   readPrec = parens $ prec 10 $ do
     Ident "fromList" <- lexP
     xs <- readPrec
-    return (fromList (proxy# :: Proxy# 'Lazy) xs)
+    return (fromListImpl (proxy# :: Proxy# 'Lazy) xs)
 
   readListPrec = readListPrecDefault
 
--- | /O(w1*n1*log(n1)*n2 + w2*n2*log(n2)*n1)/.
+-- | \(\mathcal{O}(wn\log n)\), where \(w=\max(w_1,w_2)), n=\max(n_1,n_2)\).
 instance (PartialOrd k, Eq v) => Eq (POMap k v) where
   a == b
     | size a /= size b = False
@@ -86,7 +113,7 @@ instance (NFData k, NFData v) => NFData (POMap k v) where
 
 instance PartialOrd k => GHC.Exts.IsList (POMap k v) where
   type Item (POMap k v) = (k, v)
-  fromList = fromList (proxy# :: Proxy# 'Lazy)
+  fromList = fromListImpl (proxy# :: Proxy# 'Lazy)
   toList = toList
 
 instance Functor (POMap k) where
@@ -113,10 +140,16 @@ instance Traversable (POMap k) where
 -- * Query
 --
 
+-- | \(\mathcal{O}(1)\). The number of elements in this map.
 size :: POMap k v -> Int
 size (POMap s _) = s
 {-# INLINE size #-}
 
+-- | \(\mathcal{O}(w)\).
+-- The width \(w\) of the chain decomposition in the internal
+-- data structure.
+-- This is always at least as big as the size of the biggest possible
+-- anti-chain.
 width :: POMap k v -> Int
 width = length . chainDecomposition
 {-# INLINE width #-}
@@ -133,18 +166,43 @@ foldEntry !k !f = foldMap find . chainDecomposition
         (False, False) -> mempty
 {-# INLINE foldEntry #-}
 
+-- | \(\mathcal{O}(w\log n)\).
+-- Is the key a member of the map?
 lookup :: PartialOrd k => k -> POMap k v -> Maybe v
 lookup !k = getAlt . foldEntry k pure
 {-# INLINABLE lookup #-}
 
+-- | \(\mathcal{O}(w\log n)\).
+-- Is the key a member of the map? See also 'notMember'.
+--
+-- >>> member 5 (fromList [(5,'a'), (3,'b')]) == True
+-- True
+-- >>> member 1 (fromList [(5,'a'), (3,'b')]) == False
+-- True
 member :: PartialOrd k => k -> POMap k v -> Bool
 member !k = getAny . foldEntry k (const (Any True))
 {-# INLINABLE member #-}
 
+-- | \(\mathcal{O}(w\log n)\).
+-- Is the key not a member of the map? See also 'member'.
+--
+-- >>> notMember 5 (fromList [(5,'a'), (3,'b')]) == False
+-- True
+-- >>> notMember 1 (fromList [(5,'a'), (3,'b')]) == True
+-- True
 notMember :: PartialOrd k => k -> POMap k v -> Bool
 notMember k = not . member k
 {-# INLINABLE notMember #-}
 
+-- | \(\mathcal{O}(w\log n)\).
+-- The expression @('findWithDefault' def k map)@ returns
+-- the value at key @k@ or returns default value @def@
+-- when the key is not in the map.
+--
+-- >>> findWithDefault 'x' 1 (fromList [(5,'a'), (3,'b')]) == 'x'
+-- True
+-- >>> findWithDefault 'x' 5 (fromList [(5,'a'), (3,'b')]) == 'a'
+-- True
 findWithDefault :: PartialOrd k => v -> k -> POMap k v -> v
 findWithDefault def k = fromMaybe def . lookup k
 {-# INLINABLE findWithDefault #-}
@@ -248,6 +306,14 @@ lookupX !op !k
         Nothing -> Just (k'', v'')
 {-# INLINE lookupX #-}
 
+-- | \(\mathcal{O}(w\log n)\).
+-- Find the largest set of keys smaller than the given one and
+-- return the corresponding list of (key, value) pairs.
+--
+-- >>> lookupLT 3  (fromList [(3,'a'), (5,'b')]) == []
+-- True
+-- >>> lookupLT 9 (fromList [(3,'a'), (5,'b')]) == [(3, 'a')]
+-- True
 lookupLT :: PartialOrd k => k -> POMap k v -> [(k, v)]
 lookupLT = inline lookupX LessThan
 {-# INLINABLE lookupLT #-}
@@ -613,7 +679,7 @@ intersectionWith f = inline intersectionWithKey (const f)
 -- e.g. the most naive way possible.
 intersectionWithKey :: PartialOrd k => (k -> a -> b -> c) -> POMap k a -> POMap k b -> POMap k c
 intersectionWithKey f l
-  = fromList (proxy# :: Proxy# 'Lazy)
+  = fromListImpl (proxy# :: Proxy# 'Lazy)
   . Maybe.mapMaybe (\(k,b) -> [(k, f k a b) | a <- lookup k l])
   . toList
 {-# INLINABLE intersectionWithKey #-}
@@ -673,7 +739,7 @@ mapAccumWithKey s f acc (POMap _ chains) = (acc', mkPOMap chains')
 {-# SPECIALIZE mapAccumWithKey :: Proxy# 'Lazy -> (a -> k -> b -> (a, c)) -> a -> POMap k b -> (a, POMap k c) #-}
 
 mapKeys :: PartialOrd k2 => (k1 -> k2) -> POMap k1 v -> POMap k2 v
-mapKeys f = fromList (proxy# :: Proxy# 'Lazy) . fmap (first f) . toList
+mapKeys f = fromListImpl (proxy# :: Proxy# 'Lazy) . fmap (first f) . toList
 
 mapKeysWith :: (PartialOrd k2, SingIAreWeStrict s) => Proxy# s -> (v -> v -> v) -> (k1 -> k2) -> POMap k1 v -> POMap k2 v
 mapKeysWith s c f = fromListWith s c . fmap (first f) . toList
@@ -732,11 +798,13 @@ toList = assocs
 
 -- TODO: keysSet, fromSet
 
-fromList :: (PartialOrd k, SingIAreWeStrict s) => Proxy# s -> [(k, v)] -> POMap k v
-fromList s = List.foldl' (\m (k,v) -> insert s k v m) empty
-{-# INLINABLE fromList #-}
-{-# SPECIALIZE fromList :: PartialOrd k => Proxy# 'Strict -> [(k, v)] -> POMap k v #-}
-{-# SPECIALIZE fromList :: PartialOrd k => Proxy# 'Lazy -> [(k, v)] -> POMap k v #-}
+-- | Intentionally named this way, to disambiguate it from 'fromList'.
+-- This is so that we can doctest this module.
+fromListImpl :: (PartialOrd k, SingIAreWeStrict s) => Proxy# s -> [(k, v)] -> POMap k v
+fromListImpl s = List.foldl' (\m (k,v) -> insert s k v m) empty
+{-# INLINABLE fromListImpl #-}
+{-# SPECIALIZE fromListImpl :: PartialOrd k => Proxy# 'Strict -> [(k, v)] -> POMap k v #-}
+{-# SPECIALIZE fromListImpl :: PartialOrd k => Proxy# 'Lazy -> [(k, v)] -> POMap k v #-}
 
 fromListWith :: (PartialOrd k, SingIAreWeStrict s) => Proxy# s -> (v -> v -> v) -> [(k, v)] -> POMap k v
 fromListWith s f = List.foldl' (\m (k,v) -> insertWith s f k v m) empty

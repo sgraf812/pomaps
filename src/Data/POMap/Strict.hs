@@ -212,8 +212,6 @@ import           Prelude             hiding (map)
 
 -- | \(\mathcal{O}(1)\). A map with a single element.
 --
--- Examples:
---
 -- >>> singleton 1 'a'
 -- fromList [(1,'a')]
 -- >>> size (singleton 1 'a')
@@ -226,8 +224,6 @@ singleton = Impl.singleton (proxy# :: Proxy# 'Strict)
 -- If the key is already present in the map, the associated value is
 -- replaced with the supplied value. 'insert' is equivalent to
 -- @'insertWith' 'const'@.
---
--- Examples:
 --
 -- >>> insert 5 'x' (fromList [(5,'a'), (3,'b')]) == fromList [(3,'b'), (5,'x')]
 -- True
@@ -245,8 +241,6 @@ insert = Impl.insert (proxy# :: Proxy# 'Strict)
 -- not exist in the map. If the key does exist, the function will
 -- insert the pair @(key, f new_value old_value)@.
 --
--- Examples:
---
 -- >>> insertWith (++) 5 "xxx" (fromList [(5,"a"), (3,"b")]) == fromList [(3, "b"), (5, "xxxa")]
 -- True
 -- >>> insertWith (++) 7 "xxx" (fromList [(5,"a"), (3,"b")]) == fromList [(3, "b"), (5, "a"), (7, "xxx")]
@@ -263,8 +257,6 @@ insertWith = Impl.insertWith (proxy# :: Proxy# 'Strict)
 -- not exist in the map. If the key does exist, the function will
 -- insert the pair @(key,f key new_value old_value)@.
 -- Note that the key passed to f is the same key passed to 'insertWithKey'.
---
--- Examples:
 --
 -- >>> let f key new_value old_value = (show key) ++ ":" ++ new_value ++ "|" ++ old_value
 -- >>> insertWithKey f 5 "xxx" (fromList [(5,"a"), (3,"b")]) == fromList [(3, "b"), (5, "5:xxx|a")]
@@ -503,7 +495,7 @@ alterF = Impl.alterF (proxy# :: Proxy# 'Strict)
 -- >>> fromList [(5,"c"), (3,"b"), (5, "a")] == fromList [(5,"a"), (3,"b")]
 -- True
 fromList :: PartialOrd k => [(k, v)] -> POMap k v
-fromList = Impl.fromList (proxy# :: Proxy# 'Strict)
+fromList = Impl.fromListImpl (proxy# :: Proxy# 'Strict)
 {-# INLINE fromList #-}
 
 -- | \(\mathcal{O}(wn\log n)\).

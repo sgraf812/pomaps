@@ -195,7 +195,7 @@ alterF = Impl.alterF (proxy# :: Proxy# 'Lazy)
 {-# INLINE alterF #-}
 
 fromList :: PartialOrd k => [(k, v)] -> POMap k v
-fromList = Impl.fromList (proxy# :: Proxy# 'Lazy)
+fromList = Impl.fromListImpl (proxy# :: Proxy# 'Lazy)
 {-# INLINE fromList #-}
 
 fromListWith :: PartialOrd k => (v -> v -> v) -> [(k, v)] -> POMap k v
