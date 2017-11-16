@@ -156,9 +156,9 @@ script:
   set -ex
   case "$BUILD" in
     style)
-      hlint library/
-      hlint test-suite/
-      hlint benchmark/
+      hlint src/
+      hlint tests/
+      hlint bench/
       stack --system-ghc --no-terminal build --pedantic
       ;;
     stack)
