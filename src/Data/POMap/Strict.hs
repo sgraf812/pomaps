@@ -197,6 +197,7 @@ import           GHC.Exts            (Proxy#, proxy#)
 import           Prelude             hiding (map)
 
 -- $setup
+-- This is some setup code for @doctest@.
 -- >>> :set -XGeneralizedNewtypeDeriving
 -- >>> import           Algebra.PartialOrd
 -- >>> import           Data.POMap.Strict

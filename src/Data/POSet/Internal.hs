@@ -17,6 +17,7 @@ import           Text.Read          (Lexeme (Ident), Read (..), lexP, parens,
                                      prec, readListPrecDefault)
 
 -- $setup
+-- This is some setup code for @doctest@.
 -- >>> :set -XGeneralizedNewtypeDeriving
 -- >>> import           Algebra.PartialOrd
 -- >>> import           Data.POSet
@@ -32,6 +33,7 @@ import           Text.Read          (Lexeme (Ident), Read (..), lexP, parens,
 --   default (Divisibility, DivSet)
 -- :}
 
+-- | A set of partially ordered values @k@.
 newtype POSet k
   = POSet (POMap k ())
 

@@ -5,7 +5,7 @@
 -- Maintainer  :  sgraf1337@gmail.com
 -- Portability :  portable
 --
--- An reasonably efficient implementation of partially ordered sets.
+-- A reasonably efficient implementation of partially ordered sets.
 --
 -- These modules are intended to be imported qualified, to avoid name
 -- clashes with Prelude functions, e.g.
