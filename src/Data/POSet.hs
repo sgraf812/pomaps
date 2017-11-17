@@ -61,7 +61,57 @@
 -- Its width is \(w=\frac{n}{2}\in\Omega(n)\)!
 
 module Data.POSet
-  ( module Data.POSet.Internal
+  (
+  -- * Set type
+    Impl.POSet
+  -- * Query
+  , Foldable.null
+  , Impl.size
+  , Impl.member
+  , Impl.notMember
+  , Impl.lookupLT
+  , Impl.lookupGT
+  , Impl.lookupLE
+  , Impl.lookupGE
+  , Impl.isSubsetOf
+  , Impl.isProperSubsetOf
+
+  -- * Construction
+  , Impl.empty
+  , Impl.singleton
+  , Impl.insert
+  , Impl.delete
+
+  -- * Combine
+  , Impl.union
+  , Impl.unions
+  , Impl.difference
+  , Impl.intersection
+
+  -- * Filter
+  , Impl.filter
+  , Impl.partition
+
+  -- * Map
+  , Impl.map
+  , Impl.mapMonotonic
+
+  -- * Folds
+  , Foldable.foldr
+  , Foldable.foldl
+  -- ** Strict folds
+  , Impl.foldr'
+  , Impl.foldl'
+
+  -- * Min\/Max
+  , Impl.lookupMin
+  , Impl.lookupMax
+
+  -- * Conversion
+  , Impl.elems
+  , Impl.toList
+  , Impl.fromList
   ) where
 
-import           Data.POSet.Internal
+import qualified Data.Foldable       as Foldable
+import qualified Data.POSet.Internal as Impl

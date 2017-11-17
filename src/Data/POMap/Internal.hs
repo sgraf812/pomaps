@@ -9,6 +9,9 @@
 {-# LANGUAGE RoleAnnotations     #-}
 {-# LANGUAGE TypeFamilies        #-}
 
+-- | This module doesn't respect the PVP!
+-- Breaking changes may happen at any minor version (>= *.*.m.*)
+
 module Data.POMap.Internal where
 
 import           Algebra.PartialOrd

@@ -1,6 +1,9 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies     #-}
 
+-- | This module doesn't respect the PVP!
+-- Breaking changes may happen at any minor version (>= *.*.m.*)
+
 module Data.POSet.Internal where
 
 import           Algebra.PartialOrd
