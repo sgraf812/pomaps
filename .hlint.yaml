@@ -67,6 +67,9 @@
 - ignore:
     name: Use traverse # We want to test these, so it makes no sense to reduce
     within: Data.POMap.Properties
+- ignore:
+    name: Unnecessary hiding # We need to hide Prelude.filter because of doctests
+    within: Data.POMap.Internal
 - ignore: {name: Use infix}
 
 

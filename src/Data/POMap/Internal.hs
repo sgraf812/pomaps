@@ -25,7 +25,7 @@ import           Data.Monoid        (Alt (..), Any (..))
 import           GHC.Exts           (Proxy#, inline, proxy#)
 import qualified GHC.Exts
 import           GHC.Magic          (oneShot)
-import           Prelude            hiding (lookup, map)
+import           Prelude            hiding (filter, lookup, map)
 import           Text.Read          (Lexeme (Ident), Read (..), lexP, parens,
                                      prec, readListPrecDefault)
 
@@ -43,7 +43,7 @@ import           Text.Read          (Lexeme (Ident), Read (..), lexP, parens,
 --   instance PartialOrd Divisibility where
 --     Div a `leq` Div b = b `mod` a == 0
 --   type DivMap a = POMap Divisibility a
---   default (Divisibility)
+--   default (Divisibility, DivMap String)
 -- :}
 
 -- | Allows us to abstract over value-strictness in a zero-cost manner.
@@ -310,22 +310,62 @@ lookupX !op !k
 -- Find the largest set of keys smaller than the given one and
 -- return the corresponding list of (key, value) pairs.
 --
--- >>> lookupLT 3  (fromList [(3,'a'), (5,'b')]) == []
--- True
--- >>> lookupLT 9 (fromList [(3,'a'), (5,'b')]) == [(3, 'a')]
--- True
+-- Note that the following examples assume the @Divisibility@
+-- partial order defined at the top.
+--
+-- >>> lookupLT 3  (fromList [(3,'a'), (5,'b')])
+-- []
+-- >>> lookupLT 9 (fromList [(3,'a'), (5,'b')])
+-- [(3,'a')]
 lookupLT :: PartialOrd k => k -> POMap k v -> [(k, v)]
 lookupLT = inline lookupX LessThan
 {-# INLINABLE lookupLT #-}
 
+-- | \(\mathcal{O}(w\log n)\).
+-- Find the largest key smaller or equal to the given one and return
+-- the corresponding list of (key, value) pairs.
+--
+-- Note that the following examples assume the @Divisibility@
+-- partial order defined at the top.
+--
+-- >>> lookupLE 2 (fromList [(3,'a'), (5,'b')])
+-- []
+-- >>> lookupLE 3 (fromList [(3,'a'), (5,'b')])
+-- [(3,'a')]
+-- >>> lookupLE 10 (fromList [(3,'a'), (5,'b')])
+-- [(5,'b')]
 lookupLE :: PartialOrd k => k -> POMap k v -> [(k, v)]
 lookupLE = inline lookupX LessEqual
 {-# INLINABLE lookupLE #-}
 
+-- | \(\mathcal{O}(w\log n)\).
+-- Find the smallest key greater or equal to the given one and return
+-- the corresponding list of (key, value) pairs.
+--
+-- Note that the following examples assume the @Divisibility@
+-- partial order defined at the top.
+--
+-- >>> lookupGE 3 (fromList [(3,'a'), (5,'b')])
+-- [(3,'a')]
+-- >>> lookupGE 5 (fromList [(3,'a'), (10,'b')])
+-- [(10,'b')]
+-- >>> lookupGE 6 (fromList [(3,'a'), (5,'b')])
+-- []
 lookupGE :: PartialOrd k => k -> POMap k v -> [(k, v)]
 lookupGE = inline lookupX GreaterEqual
 {-# INLINABLE lookupGE #-}
 
+-- | \(\mathcal{O}(w\log n)\).
+-- Find the smallest key greater than the given one and return the
+-- corresponding list of (key, value) pairs.
+--
+-- Note that the following examples assume the @Divisibility@
+-- partial order defined at the top.
+--
+-- >>> lookupGT 5 (fromList [(3,'a'), (10,'b')])
+-- [(10,'b')]
+-- >>> lookupGT 5 (fromList [(3,'a'), (5,'b')])
+-- []
 lookupGT :: PartialOrd k => k -> POMap k v -> [(k, v)]
 lookupGT = inline lookupX GreaterThan
 {-# INLINABLE lookupGT #-}
@@ -335,6 +375,12 @@ lookupGT = inline lookupX GreaterThan
 -- * Construction
 --
 
+-- | \(\mathcal{O}(1)\). The empty map.
+--
+-- >>> empty
+-- fromList []
+-- >>> size empty
+-- 0
 empty :: POMap k v
 empty = POMap 0 []
 {-# INLINE empty #-}
@@ -616,44 +662,103 @@ alterFChain s k = go
 
 -- ** Union
 
+-- | \(\mathcal{O}(wn\log n)\), where \(n=\max(n_1,n_2)\) and \(w=\max(w_1,w_2)\).
+-- The expression (@'union' t1 t2@) takes the left-biased union of @t1@ and @t2@.
+-- It prefers @t1@ when duplicate keys are encountered,
+-- i.e. (@'union' == 'unionWith' 'const'@).
+--
+-- >>> union (fromList [(5, "a"), (3, "b")]) (fromList [(5, "A"), (7, "C")]) == fromList [(3, "b"), (5, "a"), (7, "C")]
+-- True
 union :: PartialOrd k => POMap k v -> POMap k v -> POMap k v
 union = inline unionWith const
 {-# INLINABLE union #-}
 
+-- | \(\mathcal{O}(wn\log n)\), where \(n=\max(n_1,n_2)\) and \(w=\max(w_1,w_2)\).
+-- Union with a combining function.
+--
+-- >>> unionWith (++) (fromList [(5, "a"), (3, "b")]) (fromList [(5, "A"), (7, "C")]) == fromList [(3, "b"), (5, "aA"), (7, "C")]
+-- True
 unionWith :: PartialOrd k => (v -> v -> v) -> POMap k v -> POMap k v -> POMap k v
 unionWith f = inline unionWithKey (const f)
 {-# INLINABLE unionWith #-}
 
--- | /O(yolo)/ - Do not use this if you expect performance.
+-- | \(\mathcal{O}(wn\log n)\), where \(n=\max(n_1,n_2)\) and \(w=\max(w_1,w_2)\).
+-- Union with a combining function.
 --
--- More realistically, this runs in /O(w*n^2*log n)/,
--- e.g. the most naive way possible.
+-- >>> let f key left_value right_value = (show key) ++ ":" ++ left_value ++ "|" ++ right_value
+-- >>> unionWithKey f (fromList [(5, "a"), (3, "b")]) (fromList [(5, "A"), (7, "C")]) == fromList [(3, "b"), (5, "5:a|A"), (7, "C")]
+-- True
 unionWithKey :: PartialOrd k => (k -> v -> v -> v) -> POMap k v -> POMap k v -> POMap k v
 unionWithKey f l r = List.foldl' (\m (k, v) -> inline insertWithKey (proxy# :: Proxy# 'Lazy) f k v m) r (toList l)
 {-# INLINABLE unionWithKey #-}
 
+-- | \(\mathcal{O}(wn\log n)\), where \(n=\max_i n_i\) and \(w=\max_i w_i\).
+-- The union of a list of maps:
+--   (@'unions' == 'Prelude.foldl' 'union' 'empty'@).
+--
+-- >>> :{
+--   unions [(fromList [(5, "a"), (3, "b")]), (fromList [(5, "A"), (7, "C")]), (fromList [(5, "A3"), (3, "B3")])]
+--      == fromList [(3, "b"), (5, "a"), (7, "C")]
+-- :}
+-- True
+--
+-- >>> :{
+--  unions [(fromList [(5, "A3"), (3, "B3")]), (fromList [(5, "A"), (7, "C")]), (fromList [(5, "a"), (3, "b")])]
+--      == fromList [(3, "B3"), (5, "A3"), (7, "C")]
+-- :}
+-- True
 unions :: PartialOrd k => [POMap k v] -> POMap k v
 unions = inline unionsWith const
 {-# INLINABLE unions #-}
 
+-- | \(\mathcal{O}(wn\log n)\), where \(n=\max_i n_i\) and \(w=\max_i w_i\).
+-- The union of a list of maps, with a combining operation:
+--   (@'unionsWith' f == 'Prelude.foldl' ('unionWith' f) 'empty'@).
+--
+-- >>> :{
+--  unionsWith (++) [(fromList [(5, "a"), (3, "b")]), (fromList [(5, "A"), (7, "C")]), (fromList [(5, "A3"), (3, "B3")])]
+--      == fromList [(3, "bB3"), (5, "aAA3"), (7, "C")]
+-- :}
+-- True
 unionsWith :: PartialOrd k => (v -> v -> v) -> [POMap k v] -> POMap k v
 unionsWith f = List.foldl' (unionWith f) empty
 {-# INLINABLE unionsWith #-}
 
 -- * Difference
 
+-- | \(\mathcal{O}(wn\log n)\), where \(n=\max(n_1,n_2)\) and \(w=\max(w_1,w_2)\).
+-- Difference of two maps.
+-- Return elements of the first map not existing in the second map.
+--
+-- >>> difference (fromList [(5, "a"), (3, "b")]) (fromList [(5, "A"), (7, "C")])
+-- fromList [(3,"b")]
 difference :: PartialOrd k => POMap k a -> POMap k b -> POMap k a
 difference = inline differenceWith (\_ _ -> Nothing)
 {-# INLINABLE difference #-}
 
+-- | \(\mathcal{O}(wn\log n)\), where \(n=\max(n_1,n_2)\) and \(w=\max(w_1,w_2)\).
+-- Difference with a combining function.
+-- When two equal keys are
+-- encountered, the combining function is applied to the values of these keys.
+-- If it returns 'Nothing', the element is discarded (proper set difference). If
+-- it returns (@'Just' y@), the element is updated with a new value @y@.
+--
+-- >>> let f al ar = if al == "b" then Just (al ++ ":" ++ ar) else Nothing
+-- >>> differenceWith f (fromList [(5, "a"), (3, "b")]) (fromList [(5, "A"), (3, "B"), (7, "C")])
+-- fromList [(3,"b:B")]
 differenceWith :: PartialOrd k => (a -> b -> Maybe a) -> POMap k a -> POMap k b -> POMap k a
 differenceWith f = inline differenceWithKey (const f)
 {-# INLINABLE differenceWith #-}
 
--- | /O(yolo)/ - Do not use this if you expect performance.
+-- | \(\mathcal{O}(wn\log n)\), where \(n=\max(n_1,n_2)\) and \(w=\max(w_1,w_2)\).
+-- Difference with a combining function. When two equal keys are
+-- encountered, the combining function is applied to the key and both values.
+-- If it returns 'Nothing', the element is discarded (proper set difference). If
+-- it returns (@'Just' y@), the element is updated with a new value @y@.
 --
--- More realistically, this runs in /O(w*n^2*log n)/,
--- e.g. the most naive way possible.
+-- >>> let f k al ar = if al == "b" then Just ((show k) ++ ":" ++ al ++ "|" ++ ar) else Nothing
+-- >>> differenceWithKey f (fromList [(5, "a"), (3, "b")]) (fromList [(5, "A"), (3, "B"), (10, "C")])
+-- fromList [(3,"3:b|B")]
 differenceWithKey :: PartialOrd k => (k -> a -> b -> Maybe a) -> POMap k a -> POMap k b -> POMap k a
 differenceWithKey f l
   = List.foldl' (\m (k, v) -> inline alterWithKey (proxy# :: Proxy# 'Lazy) (f' v) k m) l
@@ -665,18 +770,32 @@ differenceWithKey f l
 
 -- ** Intersection
 
+-- | \(\mathcal{O}(wn\log n)\), where \(n=\max(n_1,n_2)\) and \(w=\max(w_1,w_2)\).
+-- Intersection of two maps.
+-- Return data in the first map for the keys existing in both maps.
+-- (@'intersection' m1 m2 == 'intersectionWith' 'const' m1 m2@).
+--
+-- >>> intersection (fromList [(5, "a"), (3, "b")]) (fromList [(5, "A"), (7, "C")])
+-- fromList [(5,"a")]
 intersection :: PartialOrd k => POMap k a -> POMap k b -> POMap k a
 intersection = inline intersectionWith const
 {-# INLINABLE intersection #-}
 
+-- | \(\mathcal{O}(wn\log n)\), where \(n=\max(n_1,n_2)\) and \(w=\max(w_1,w_2)\).
+-- Intersection with a combining function.
+--
+-- >>> intersectionWith (++) (fromList [(5, "a"), (3, "b")]) (fromList [(5, "A"), (7, "C")])
+-- fromList [(5,"aA")]
 intersectionWith :: PartialOrd k => (a -> b -> c) -> POMap k a -> POMap k b -> POMap k c
 intersectionWith f = inline intersectionWithKey (const f)
 {-# INLINABLE intersectionWith #-}
 
--- | /O(yolo)/ - Do not use this if you expect performance.
+-- | \(\mathcal{O}(wn\log n)\), where \(n=\max(n_1,n_2)\) and \(w=\max(w_1,w_2)\).
+-- Intersection with a combining function.
 --
--- More realistically, this runs in /O(w*n^2*log n)/,
--- e.g. the most naive way possible.
+-- >>> let f k al ar = (show k) ++ ":" ++ al ++ "|" ++ ar
+-- >>> intersectionWithKey f (fromList [(5, "a"), (3, "b")]) (fromList [(5, "A"), (7, "C")])
+-- fromList [(5,"5:a|A")]
 intersectionWithKey :: PartialOrd k => (k -> a -> b -> c) -> POMap k a -> POMap k b -> POMap k c
 intersectionWithKey f l
   = fromListImpl (proxy# :: Proxy# 'Lazy)
@@ -754,45 +873,114 @@ mapKeysMonotonic f (POMap _ d) = mkPOMap (fmap (Map.mapKeysMonotonic f) d)
 -- * Folds
 --
 
+-- | \(\mathcal{O}(n)\).
+-- A strict version of 'foldr'. Each application of the operator is
+-- evaluated before using the result in the next application. This
+-- function is strict in the starting value.
 foldr' :: (a -> b -> b) -> b -> POMap k a -> b
 foldr' f acc = List.foldr (flip (Map.foldr' f)) acc . chainDecomposition
 {-# INLINE foldr' #-}
 
+-- | \(\mathcal{O}(n)\).
+-- Fold the keys and values in the map using the given right-associative
+-- binary operator, such that
+-- @'foldrWithKey' f z == 'Prelude.foldr' ('uncurry' f) z . 'toAscList'@.
+--
+-- For example,
+--
+-- >>> keys map = foldrWithKey (\k x ks -> k:ks) [] map
+--
+-- >>> let f k a result = result ++ "(" ++ (show k) ++ ":" ++ a ++ ")"
+-- >>> foldrWithKey f "Map: " (fromList [(5,"a"), (3,"b")]) == "Map: (5:a)(3:b)"
+-- True
 foldrWithKey :: (k -> a -> b -> b) -> b -> POMap k a -> b
 foldrWithKey f acc = List.foldr (flip (Map.foldrWithKey f)) acc . chainDecomposition
 {-# INLINE foldrWithKey #-}
 
+-- | \(\mathcal{O}(n)\).
+-- A strict version of 'foldrWithKey'. Each application of the operator is
+-- evaluated before using the result in the next application. This
+-- function is strict in the starting value.
 foldrWithKey' :: (k -> a -> b -> b) -> b -> POMap k a -> b
 foldrWithKey' f acc = List.foldr (flip (Map.foldrWithKey' f)) acc . chainDecomposition
 {-# INLINE foldrWithKey' #-}
 
+-- | \(\mathcal{O}(n)\).
+-- A strict version of 'foldl'. Each application of the operator is
+-- evaluated before using the result in the next application. This
+-- function is strict in the starting value.
 foldl' :: (b -> a -> b) -> b -> POMap k a -> b
 foldl' f acc = List.foldl' (Map.foldl' f) acc . chainDecomposition
 {-# INLINE foldl' #-}
 
+-- | \(\mathcal{O}(n)\).
+-- Fold the keys and values in the map using the given left-associative
+-- binary operator, such that
+-- @'foldlWithKey' f z == 'Prelude.foldl' (\\z' (kx, x) -> f z' kx x) z . 'toAscList'@.
+--
+-- >>> keys = reverse . foldlWithKey (\ks k x -> k:ks) []
+--
+-- >>> let f result k a = result ++ "(" ++ (show k) ++ ":" ++ a ++ ")"
+-- >>> foldlWithKey f "Map: " (fromList [(5,"a"), (3,"b")]) == "Map: (3:b)(5:a)"
+-- True
 foldlWithKey :: (b -> k -> a -> b) -> b -> POMap k a -> b
 foldlWithKey f acc = List.foldl (Map.foldlWithKey f) acc . chainDecomposition
 {-# INLINE foldlWithKey #-}
 
+-- | \(\mathcal{O}(n)\).
+-- A strict version of 'foldlWithKey'. Each application of the operator is
+-- evaluated before using the result in the next application. This
+-- function is strict in the starting value.
 foldlWithKey' :: (b -> k -> a -> b) -> b -> POMap k a -> b
 foldlWithKey' f acc = List.foldl' (Map.foldlWithKey' f) acc . chainDecomposition
 {-# INLINE foldlWithKey' #-}
 
+-- | \(\mathcal{O}(n)\).
+-- Fold the keys and values in the map using the given monoid, such that
+--
+-- @'foldMapWithKey' f = 'Prelude.fold' . 'mapWithKey' f@
 foldMapWithKey :: Monoid m => (k -> a -> m) -> POMap k a -> m
 foldMapWithKey f = foldMap (Map.foldMapWithKey f ) . chainDecomposition
 {-# INLINE foldMapWithKey #-}
 
 -- * Conversion
 
+-- | \(\mathcal{O}(n)\).
+-- Return all elements of the map in unspecified order.
+--
+-- >>> elems (fromList [(5,"a"), (3,"b")])
+-- ["b","a"]
+-- >>> elems empty
+-- []
 elems :: POMap k v -> [v]
 elems = concatMap Map.elems . chainDecomposition
 
+-- | \(\mathcal{O}(n)\).
+-- Return all keys of the map in unspecified order.
+--
+-- >>> keys (fromList [(5,"a"), (3,"b")])
+-- [3,5]
+-- >>> keys empty
+-- []
 keys :: POMap k v -> [k]
 keys = concatMap Map.keys . chainDecomposition
 
+-- | \(\mathcal{O}(n)\).
+-- Return all key\/value pairs in the map
+-- in unspecified order.
+--
+-- >>> assocs (fromList [(5,"a"), (3,"b")])
+-- [(3,"b"),(5,"a")]
+-- >>> assocs empty
+-- []
 assocs :: POMap k v -> [(k, v)]
 assocs = concatMap Map.toList . chainDecomposition
 
+-- | \(\mathcal{O}(n)\).
+-- Return all key\/value pairs in the map
+-- in unspecified order.
+--
+-- Currently, @toList = 'assocs'@.
 toList :: POMap k v -> [(k, v)]
 toList = assocs
 
@@ -822,17 +1010,53 @@ fromListWithKey s f = List.foldl' (\m (k,v) -> insertWithKey s f k v m) empty
 -- * Filter
 --
 
+-- | \(\mathcal{O}(n)\).
+-- Filter all values that satisfy the predicate.
+--
+-- >>> filter (> "a") (fromList [(5,"a"), (3,"b")])
+-- fromList [(3,"b")]
+-- >>> filter (> "x") (fromList [(5,"a"), (3,"b")])
+-- fromList []
+-- >>> filter (< "a") (fromList [(5,"a"), (3,"b")])
+-- fromList []
 filter :: (v -> Bool) -> POMap k v -> POMap k v
 filter p = filterWithKey (const p)
 
+-- | \(\mathcal{O}(n)\).
+-- Filter all keys\/values that satisfy the predicate.
+--
+-- >>> filterWithKey (\(Div k) _ -> k > 4) (fromList [(5,"a"), (3,"b")])
+-- fromList [(5,"a")]
 filterWithKey :: (k -> v -> Bool) -> POMap k v -> POMap k v
 filterWithKey p (POMap _ d) = mkPOMap (Map.filterWithKey p <$> d)
 
 -- TODO: restrictKeys, withoutKeys
 
+-- | \(\mathcal{O}(n)\).
+-- Partition the map according to a predicate. The first
+-- map contains all elements that satisfy the predicate, the second all
+-- elements that fail the predicate. See also 'split'.
+--
+-- >>> partition (> "a") (fromList [(5,"a"), (3,"b")]) == (fromList [(3, "b")], fromList [(5, "a")])
+-- True
+-- >>> partition (< "x") (fromList [(5,"a"), (3,"b")]) == (fromList [(3, "b"), (5, "a")], empty)
+-- True
+-- >>> partition (> "x") (fromList [(5,"a"), (3,"b")]) == (empty, fromList [(3, "b"), (5, "a")])
+-- True
 partition :: (v -> Bool) -> POMap k v -> (POMap k v, POMap k v)
 partition p = partitionWithKey (const p)
 
+-- | \(\mathcal{O}(n)\).
+-- Partition the map according to a predicate. The first
+-- map contains all elements that satisfy the predicate, the second all
+-- elements that fail the predicate. See also 'split'.
+--
+-- >>> partitionWithKey (\ (Div k) _ -> k > 3) (fromList [(5,"a"), (3,"b")]) == (fromList [(5, "a")], fromList [(3, "b")])
+-- True
+-- >>> partitionWithKey (\ (Div k) _ -> k < 7) (fromList [(5,"a"), (3,"b")]) == (fromList [(3, "b"), (5, "a")], empty)
+-- True
+-- >>> partitionWithKey (\ (Div k) _ -> k > 7) (fromList [(5,"a"), (3,"b")]) == (empty, fromList [(3, "b"), (5, "a")])
+-- True
 partitionWithKey :: (k -> v -> Bool) -> POMap k v -> (POMap k v, POMap k v)
 partitionWithKey p (POMap _ d)
   = (mkPOMap *** mkPOMap)
@@ -889,12 +1113,34 @@ mapEitherWithKey s p (POMap _ d)
 -- * Submap
 --
 
--- | /O(w1*n1*log(n1)*n2)/.
+-- | \(\mathcal{O}(n_2 w_1 n_1 \log n_1)\).
+-- This function is defined as (@'isSubmapOf' = 'isSubmapOfBy' (==)@).
 isSubmapOf :: (PartialOrd k, Eq v) => POMap k v -> POMap k v -> Bool
 isSubmapOf = isSubmapOfBy (==)
 {-# INLINABLE isSubmapOf #-}
 
--- | /O(w1*n1*log(n1)*n2)/.
+{- | \(\mathcal{O}(n_2 w_1 n_1 \log n_1)\).
+ The expression (@'isSubmapOfBy' f t1 t2@) returns 'True' if
+ all keys in @t1@ are in tree @t2@, and when @f@ returns 'True' when
+ applied to their respective values. For example, the following
+ expressions are all 'True':
+
+ >>> isSubmapOfBy (==) (fromList [(1,'a')]) (fromList [(1,'a'),(2,'b')])
+ True
+ >>> isSubmapOfBy (<=) (fromList [(1,'a')]) (fromList [(1,'b'),(2,'c')])
+ True
+ >>> isSubmapOfBy (==) (fromList [(1,'a'),(2,'b')]) (fromList [(1,'a'),(2,'b')])
+ True
+
+ But the following are all 'False':
+
+ >>> isSubmapOfBy (==) (fromList [(2,'a')]) (fromList [(1,'a'),(2,'b')])
+ False
+ >>> isSubmapOfBy (<)  (fromList [(1,'a')]) (fromList [(1,'a'),(2,'b')])
+ False
+ >>> isSubmapOfBy (==) (fromList [(1,'a'),(2,'b')]) (fromList [(1,'a')])
+ False
+-}
 isSubmapOfBy :: (PartialOrd k) => (a -> b -> Bool) -> POMap k a -> POMap k b -> Bool
 isSubmapOfBy f s m
   = all (\(k, v) -> fmap (f v) (lookup k m) == Just True)
@@ -902,10 +1148,35 @@ isSubmapOfBy f s m
   $ s
 {-# INLINABLE isSubmapOfBy #-}
 
+-- | \(\mathcal{O}(n_2 w_1 n_1 \log n_1)\).
+-- Is this a proper submap? (ie. a submap but not equal).
+-- Defined as (@'isProperSubmapOf' = 'isProperSubmapOfBy' (==)@).
 isProperSubmapOf :: (PartialOrd k, Eq v) => POMap k v -> POMap k v -> Bool
 isProperSubmapOf = isProperSubmapOfBy (==)
 {-# INLINABLE isProperSubmapOf #-}
 
+{- | \(\mathcal{O}(n_2 w_1 n_1 \log n_1)\).
+ Is this a proper submap? (ie. a submap but not equal).
+ The expression (@'isProperSubmapOfBy' f m1 m2@) returns 'True' when
+ @m1@ and @m2@ are not equal,
+ all keys in @m1@ are in @m2@, and when @f@ returns 'True' when
+ applied to their respective values. For example, the following
+ expressions are all 'True':
+
+  >>> isProperSubmapOfBy (==) (fromList [(1,'a')]) (fromList [(1,'a'),(2,'b')])
+  True
+  >>> isProperSubmapOfBy (<=) (fromList [(1,'a')]) (fromList [(1,'a'),(2,'b')])
+  True
+
+ But the following are all 'False':
+
+  >>> isProperSubmapOfBy (==) (fromList [(1,'a'),(2,'b')]) (fromList [(1,'a'),(2,'b')])
+  False
+  >>> isProperSubmapOfBy (==) (fromList [(1,'a'),(2,'b')]) (fromList [(1,'a')])
+  False
+  >>> isProperSubmapOfBy (<)  (fromList [(1,'a')])         (fromList [(1,'a'),(2,'b')])
+  False
+-}
 isProperSubmapOfBy :: (PartialOrd k) => (a -> b -> Bool) -> POMap k a -> POMap k b -> Bool
 isProperSubmapOfBy f s m = size s < size m && isSubmapOfBy f s m
 {-# INLINABLE isProperSubmapOfBy #-}
@@ -914,10 +1185,30 @@ isProperSubmapOfBy f s m = size s < size m && isSubmapOfBy f s m
 -- * Min/Max
 --
 
+-- | \(\mathcal{O}(w\log n)\).
+-- The minimal keys of the map.
+--
+-- Note that the following examples assume the @Divisibility@
+-- partial order defined at the top.
+--
+-- >>> lookupMin (fromList [(6,"a"), (3,"b")])
+-- [(3,"b")]
+-- >>> lookupMin empty
+-- []
 lookupMin :: PartialOrd k => POMap k v -> [(k, v)]
 lookupMin = dedupAntichain LessThan . Maybe.mapMaybe Map.lookupMin . chainDecomposition
 {-# INLINABLE lookupMin #-}
 
+-- | \(\mathcal{O}(w\log n)\).
+-- The maximal keys of the map.
+--
+-- Note that the following examples assume the @Divisibility@
+-- partial order defined at the top.
+--
+-- >>> lookupMax (fromList [(6,"a"), (3,"b")])
+-- [(6,"a")]
+-- >>> lookupMax empty
+-- []
 lookupMax :: PartialOrd k => POMap k v -> [(k, v)]
 lookupMax = dedupAntichain GreaterThan . Maybe.mapMaybe Map.lookupMax . chainDecomposition
 {-# INLINABLE lookupMax #-}

@@ -59,7 +59,6 @@
 --   = Div Int
 --   deriving (Eq, Read, Show)
 --
--- -- We want integer literals to be interpreted as 'Divisibility's!
 -- default (Divisibility)
 --
 -- instance 'PartialOrd' Divisibility where
@@ -67,6 +66,9 @@
 --
 -- type DivMap a = POMap Divisibility a
 --
+-- -- We want integer literals to be interpreted as 'Divisibility's
+-- -- and default 'empty's to DivMap String.
+-- default (Divisibility, DivMap String)
 -- @
 --
 -- 'Divisility' is actually an example for a 'PartialOrd' that should not be used as keys of 'POMap'.
@@ -207,7 +209,7 @@ import           Prelude             hiding (map)
 --   instance PartialOrd Divisibility where
 --     Div a `leq` Div b = b `mod` a == 0
 --   type DivMap a = POMap Divisibility a
---   default (Divisibility)
+--   default (Divisibility, DivMap String)
 -- :}
 
 -- | \(\mathcal{O}(1)\). A map with a single element.
