@@ -76,10 +76,12 @@ data POMap k v = POMap !Int ![Map k v]
 
 type role POMap nominal representational
 
--- | internal smart constructor so that we can be sure that we are always
--- spine-strict and have appropriate size information.
+-- | Internal smart constructor so that we can be sure that we are always
+-- spine-strict, discard empty maps and have appropriate size information.
 mkPOMap :: [Map k v] -> POMap k v
-mkPOMap decomp = POMap (foldr ((+) . Map.size) 0 decomp) (seqList decomp)
+mkPOMap decomp = POMap (foldr ((+) . Map.size) 0 decomp') decomp'
+  where
+    decomp' = seqList (List.filter (not . Map.null) decomp)
 {-# INLINE mkPOMap #-}
 
 chainDecomposition :: POMap k v -> [Map k v]
