@@ -1,6 +1,6 @@
 name:           pomaps
 version:        0.0.0.1
-synopsis:       Maps and sets indexed by a partial order
+synopsis:       Maps and sets of partial orders
 category:       Data Structures
 homepage:       https://github.com/sgraf812/pomaps#readme
 bug-reports:    https://github.com/sgraf812/pomaps/issues

@@ -225,6 +225,8 @@ union :: PartialOrd k => POSet k -> POSet k -> POSet k
 union = coerce (POMap.union @_ @())
 {-# INLINE union #-}
 
+-- | \(\mathcal{O}(wn\log n)\), where \(n=\max_i n_i\) and \(w=\max_i w_i\).
+-- The union of a list of sets: (@'unions' == 'foldl' 'union' 'empty'@).
 unions :: PartialOrd k => [POSet k] -> POSet k
 unions = coerce (POMap.unions @_ @())
 {-# INLINE unions #-}

@@ -491,10 +491,21 @@ overChains handleChain oldWon newWon incomparable pomap
         Found chains    -> chains
 {-# INLINE overChains #-}
 
+-- | \(\mathcal{O}(w\log n)\).
+-- Delete a key and its value from the map. When the key is not
+-- a member of the map, the original map is returned.
+--
+-- >>> delete 5 (fromList [(5,"a"), (3,"b")])
+-- fromList [(3,"b")]
+-- >>> delete 7 (fromList [(5,"a"), (3,"b")]) == fromList [(3, "b"), (5, "a")]
+-- True
+-- >>> delete 5 empty
+-- fromList []
 delete :: PartialOrd k => k -> POMap k v -> POMap k v
 delete = inline update (proxy# :: Proxy# 'Lazy) (const Nothing)
 {-# INLINABLE delete #-}
 
+-- | \(\mathcal{O}(w\log n)\). Simultaneous 'delete' and 'lookup'.
 deleteLookup :: PartialOrd k => k -> POMap k v -> (Maybe v, POMap k v)
 deleteLookup = inline updateLookupWithKey (proxy# :: Proxy# 'Lazy) (\_ _ -> Nothing)
 {-# INLINABLE deleteLookup #-}
@@ -868,6 +879,19 @@ mapAccumWithKey s f acc (POMap _ chains) = (acc', mkPOMap chains')
 {-# SPECIALIZE mapAccumWithKey :: Proxy# 'Strict -> (a -> k -> b -> (a, c)) -> a -> POMap k b -> (a, POMap k c) #-}
 {-# SPECIALIZE mapAccumWithKey :: Proxy# 'Lazy -> (a -> k -> b -> (a, c)) -> a -> POMap k b -> (a, POMap k c) #-}
 
+-- | \(\mathcal{O}(wn\log n)\).
+-- @'mapKeys' f s@ is the map obtained by applying @f@ to each key of @s@.
+--
+-- The size of the result may be smaller if @f@ maps two or more distinct
+-- keys to the same new key.  In this case the value at the greatest of the
+-- original keys is retained.
+--
+-- >>> mapKeys (+ 1) (fromList [(5,"a"), (3,"b")]) == fromList [(4, "b"), (6, "a")]
+-- True
+-- >>> mapKeys (\ _ -> 1) (fromList [(1,"b"), (2,"a"), (3,"d"), (4,"c")])
+-- fromList [(1,"c")]
+-- >>> mapKeys (\ _ -> 3) (fromList [(1,"b"), (2,"a"), (3,"d"), (4,"c")])
+-- fromList [(3,"c")]
 mapKeys :: PartialOrd k2 => (k1 -> k2) -> POMap k1 v -> POMap k2 v
 mapKeys f = fromListImpl (proxy# :: Proxy# 'Lazy) . fmap (first f) . toList
 
