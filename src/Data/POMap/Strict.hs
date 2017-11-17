@@ -57,7 +57,7 @@
 --
 -- newtype Divisibility
 --   = Div Int
---   deriving (Eq, Read, Show)
+--   deriving (Eq, Read, Show, Num)
 --
 -- default (Divisibility)
 --
@@ -222,7 +222,8 @@ singleton :: k -> v -> POMap k v
 singleton = Impl.singleton (proxy# :: Proxy# 'Strict)
 {-# INLINE singleton #-}
 
--- | \(\mathcal{O}(w\log n)\). Insert a new key and value in the map.
+-- | \(\mathcal{O}(w\log n)\).
+-- Insert a new key and value in the map.
 -- If the key is already present in the map, the associated value is
 -- replaced with the supplied value. 'insert' is equivalent to
 -- @'insertWith' 'const'@.

@@ -43,7 +43,8 @@ library
     , containers >= 0.5.9.2 && <= 0.5.10.2
   if flag(use-lattices)
     build-depends: 
-      lattices < 2
+    -- We need PartialOrd instances for ()
+      lattices >= 1.7 && < 2
   exposed-modules:
       Data.POMap.Internal
       Data.POMap.Lazy

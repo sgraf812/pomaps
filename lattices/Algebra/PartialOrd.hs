@@ -22,6 +22,7 @@ import qualified Data.IntMap as IM
 import qualified Data.IntSet as IS
 import qualified Data.Map    as M
 import qualified Data.Set    as S
+import           Data.Void   (Void)
 
 -- | A partial ordering on sets
 -- (<http://en.wikipedia.org/wiki/Partially_ordered_set>) is a set equipped
@@ -93,6 +94,12 @@ class Eq a => PartialOrd a where
 -- @
 partialOrdEq :: PartialOrd a => a -> a -> Bool
 partialOrdEq x y = leq x y && leq y x
+
+instance PartialOrd () where
+    leq _ _ = True
+
+instance PartialOrd Void where
+    leq _ _ = True
 
 instance Ord a => PartialOrd (S.Set a) where
     leq = S.isSubsetOf

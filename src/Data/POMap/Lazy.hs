@@ -53,7 +53,7 @@
 --
 -- newtype Divisibility
 --   = Div Int
---   deriving (Eq, Read, Show)
+--   deriving (Eq, Read, Show, Num)
 --
 -- default (Divisibility)
 --

@@ -110,6 +110,10 @@ instance (PartialOrd k, Eq v) => Eq (POMap k v) where
     | size a /= size b = False
     | otherwise = isSubmapOf a b && isSubmapOf b a
 
+-- | \(\mathcal{O}(wn\log n)\), where \(w=\max(w_1,w_2)), n=\max(n_1,n_2)\).
+instance (PartialOrd k, PartialOrd v) => PartialOrd (POMap k v) where
+  a `leq` b = isSubmapOfBy leq a b
+
 instance (NFData k, NFData v) => NFData (POMap k v) where
   rnf (POMap _ d) = rnf d
 
@@ -799,10 +803,11 @@ intersectionWith f = inline intersectionWithKey (const f)
 -- >>> intersectionWithKey f (fromList [(5, "a"), (3, "b")]) (fromList [(5, "A"), (7, "C")])
 -- fromList [(5,"5:a|A")]
 intersectionWithKey :: PartialOrd k => (k -> a -> b -> c) -> POMap k a -> POMap k b -> POMap k c
-intersectionWithKey f l
+intersectionWithKey f l r
   = fromListImpl (proxy# :: Proxy# 'Lazy)
-  . Maybe.mapMaybe (\(k,b) -> [(k, f k a b) | a <- lookup k l])
+  . Maybe.mapMaybe (\(k,a) -> [(k, f k a b) | b <- lookup k r])
   . toList
+  $ l
 {-# INLINABLE intersectionWithKey #-}
 
 
@@ -868,6 +873,21 @@ mapKeysWith s c f = fromListWith s c . fmap (first f) . toList
 {-# SPECIALIZE mapKeysWith :: PartialOrd k2 => Proxy# 'Strict -> (v -> v -> v) -> (k1 -> k2) -> POMap k1 v -> POMap k2 v #-}
 {-# SPECIALIZE mapKeysWith :: PartialOrd k2 => Proxy# 'Lazy -> (v -> v -> v) -> (k1 -> k2) -> POMap k1 v -> POMap k2 v #-}
 
+-- | \(\mathcal{O}(n)\).
+-- @'mapKeysMonotonic' f s == 'mapKeys' f s@, but works only when @f@
+-- is strictly monotonic.
+-- That is, for any values @x@ and @y@, if @x@ < @y@ then @f x@ < @f y@.
+-- /The precondition is not checked./
+-- Semi-formally, for every chain @ls@ in @s@ we have:
+--
+-- > and [x < y ==> f x < f y | x <- ls, y <- ls]
+-- >                     ==> mapKeysMonotonic f s == mapKeys f s
+--
+-- This means that @f@ maps distinct original keys to distinct resulting keys.
+-- This function has better performance than 'mapKeys'.
+--
+-- >>> mapKeysMonotonic (\ k -> k * 2) (fromList [(5,"a"), (3,"b")]) == fromList [(6, "b"), (10, "a")]
+-- True
 mapKeysMonotonic :: (k1 -> k2) -> POMap k1 v -> POMap k2 v
 mapKeysMonotonic f (POMap _ d) = mkPOMap (fmap (Map.mapKeysMonotonic f) d)
 
