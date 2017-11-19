@@ -62,6 +62,11 @@ matrix:
     compiler: ": #stack 8.0.2"
     addons: {apt: {packages: [libgmp-dev]}}
 
+  # Check that the build succeeds when not depending on `lattices`
+  - env: BUILD=stack ARGS="--resolver lts-8 --flag pomaps:-use-lattices"
+    compiler: ": #stack 8.0.2 without lattices"
+    addons: {apt: {packages: [libgmp-dev]}}
+
   # This just checks style rules
   - env: BUILD=style GHCVER=8.0.2 STACK_YAML=stack.yaml
     compiler: ": #stack 8.0.2 style"
