@@ -4,7 +4,7 @@ synopsis:       Maps and sets of partial orders
 category:       Data Structures
 homepage:       https://github.com/sgraf812/pomaps#readme
 bug-reports:    https://github.com/sgraf812/pomaps/issues
-maintainer:     Sebastian Graf
+maintainer:     Sebastian Graf <sgraf1337@gmail.com>
 license:        MIT
 license-file:   LICENSE.md
 build-type:     Simple
