@@ -1,4 +1,4 @@
-# [pomaps][] [![Build Status](https://travis-ci.org/sgraf812/pomaps.svg?branch=master)](https://travis-ci.org/sgraf812/pomaps) [![Hackage](https://img.shields.io/hackage/v/lens.svg)](https://hackage.haskell.org/package/pomaps)
+# [pomaps][] [![Build Status](https://travis-ci.org/sgraf812/pomaps.svg?branch=master)](https://travis-ci.org/sgraf812/pomaps) [![Hackage](https://img.shields.io/hackage/v/pomaps.svg)](https://hackage.haskell.org/package/pomaps)
 
 Reasonably fast maps (and possibly sets) based on keys satisfying [`PartialOrd`](https://hackage.haskell.org/package/lattices-1.6.0/docs/Algebra-PartialOrd.html#t:PartialOrd).
 
