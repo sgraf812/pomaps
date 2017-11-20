@@ -58,13 +58,9 @@ matrix:
     compiler: ": #stack 8.0.1"
     addons: {apt: {packages: [libgmp-dev]}}
 
-  - env: BUILD=stack ARGS="--resolver lts-8"
-    compiler: ": #stack 8.0.2"
-    addons: {apt: {packages: [libgmp-dev]}}
-
   # Check that the build succeeds when not depending on `lattices`
-  - env: BUILD=stack ARGS="--resolver lts-8 --flag pomaps:-use-lattices"
-    compiler: ": #stack 8.0.2 without lattices"
+  - env: BUILD=stack ARGS="--flag pomaps:-use-lattices"
+    compiler: ": #stack default without lattices"
     addons: {apt: {packages: [libgmp-dev]}}
 
   # This just checks style rules
@@ -85,10 +81,6 @@ matrix:
   # Travis includes an macOS which is incompatible with GHC 7.8.4
   - env: BUILD=stack ARGS="--resolver lts-7"
     compiler: ": #stack 8.0.1 osx"
-    os: osx
-
-  - env: BUILD=stack ARGS="--resolver lts-8"
-    compiler: ": #stack 8.0.2 osx"
     os: osx
 
   - env: BUILD=stack ARGS="--resolver nightly"
