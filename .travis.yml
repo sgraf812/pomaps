@@ -144,7 +144,7 @@ install:
       stack --system-ghc --no-terminal install hlint
       ;;
     stack)
-      stack --no-terminal --install-ghc $ARGS test --bench --only-dependencies
+      stack --no-terminal --install-ghc test --bench --only-dependencies $ARGS
       ;;
     cabal)
       cabal --version
@@ -169,7 +169,7 @@ script:
       stack --system-ghc --no-terminal build --pedantic
       ;;
     stack)
-      stack --no-terminal test $ARGS --bench --no-run-benchmarks --haddock --no-haddock-deps
+      stack --no-terminal test --bench --no-run-benchmarks --haddock --no-haddock-deps $ARGS
       ;;
     cabal)
       cabal install --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
