@@ -1,7 +1,7 @@
 # Change log
 
-pomaps uses [Semantic Versioning][].
+`pomaps` follows the [PVP][].
 The change log is available through the [releases on GitHub][].
 
-[Semantic Versioning]: http://semver.org/spec/v2.0.0.html
+[PVP]: https://pvp.haskell.org/
 [releases on GitHub]: https://github.com/sgraf812/pomaps/releases
