@@ -58,19 +58,15 @@ matrix:
     compiler: ": #stack 8.0.2"
     addons: {apt: {packages: [libgmp-dev]}}
 
-  - env: BUILD=stack ARGS="--stack-yaml=stack-lts-7.yaml"
-    compiler: ": #stack 8.0.1"
-    addons: {apt: {packages: [libgmp-dev]}}
-
   # Check that the build succeeds when not depending on `lattices`
   - env: BUILD=stack ARGS="--flag pomaps:no-lattices"
     compiler: ": #stack default without lattices"
     addons: {apt: {packages: [libgmp-dev]}}
 
   # This just checks style rules
-  - env: BUILD=style GHCVER=8.0.2
-    compiler: ": #stack 8.0.2 style"
-    addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  - env: BUILD=style GHCVER=8.2.2
+    compiler: ": #stack 8.2.2 style"
+    addons: {apt: {packages: [cabal-install-2.0,ghc-8.2.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
 
   # Nightly builds are allowed to fail
   - env: BUILD=stack ARGS="--resolver nightly"
@@ -84,10 +80,6 @@ matrix:
 
   - env: BUILD=stack ARGS="--stack-yaml=stack-lts-9.yaml"
     compiler: ": #stack 8.0.2 osx"
-    os: osx
-
-  - env: BUILD=stack ARGS="--stack-yaml=stack-lts-7.yaml"
-    compiler: ": #stack 8.0.1 osx"
     os: osx
 
   - env: BUILD=stack ARGS="--resolver nightly"

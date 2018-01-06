@@ -112,6 +112,9 @@ benchmark pomaps-benchmarks
     , deepseq
     , random
     , vector
+  if !flag(no-lattices)
+    build-depends: 
+      lattices < 2
   default-language: Haskell2010
 
 
