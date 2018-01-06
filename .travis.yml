@@ -160,7 +160,7 @@ script:
   set -ex
   case "$BUILD" in
     style)
-      curl -sL https://raw.github.com/ndmitchell/hlint/master/misc/travis.sh | sh -s src/ tests/ bench/ examples/
+      curl -sL https://raw.github.com/ndmitchell/hlint/master/misc/travis.sh | sh -s src/ tests/ bench/
       stack --system-ghc --no-terminal build --test --bench --no-run-tests --no-run-benchmarks --pedantic
       cabal check
       ;;
