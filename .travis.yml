@@ -38,9 +38,9 @@ matrix:
   - env: BUILD=cabal GHCVER=8.0.2 CABALVER=1.24 HAPPYVER=1.19.5 ALEXVER=3.1.7
     compiler: ": #GHC 8.0.2"
     addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
-  - env: BUILD=cabal GHCVER=8.2.1 CABALVER=2.0 HAPPYVER=1.19.5 ALEXVER=3.1.7
-    compiler: ": #GHC 8.2.1"
-    addons: {apt: {packages: [cabal-install-2.0,ghc-8.2.1,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  - env: BUILD=cabal GHCVER=8.2.2 CABALVER=2.0 HAPPYVER=1.19.5 ALEXVER=3.1.7
+    compiler: ": #GHC 8.2.2"
+    addons: {apt: {packages: [cabal-install-2.0,ghc-8.2.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
 
   # Build with the newest GHC and cabal-install. This is an accepted failure,
   # see below.
@@ -54,7 +54,11 @@ matrix:
     compiler: ": #stack default"
     addons: {apt: {packages: [libgmp-dev]}}
 
-  - env: BUILD=stack ARGS="--resolver lts-7"
+  - env: BUILD=stack ARGS="--stack-yaml=stack-lts-9.yaml"
+    compiler: ": #stack 8.0.2"
+    addons: {apt: {packages: [libgmp-dev]}}
+
+  - env: BUILD=stack ARGS="--stack-yaml=stack-lts-7.yaml"
     compiler: ": #stack 8.0.1"
     addons: {apt: {packages: [libgmp-dev]}}
 
@@ -64,7 +68,7 @@ matrix:
     addons: {apt: {packages: [libgmp-dev]}}
 
   # This just checks style rules
-  - env: BUILD=style GHCVER=8.0.2 STACK_YAML=stack.yaml
+  - env: BUILD=style GHCVER=8.0.2
     compiler: ": #stack 8.0.2 style"
     addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
 
@@ -78,8 +82,11 @@ matrix:
     compiler: ": #stack default osx"
     os: osx
 
-  # Travis includes an macOS which is incompatible with GHC 7.8.4
-  - env: BUILD=stack ARGS="--resolver lts-7"
+  - env: BUILD=stack ARGS="--stack-yaml=stack-lts-9.yaml"
+    compiler: ": #stack 8.0.2 osx"
+    os: osx
+
+  - env: BUILD=stack ARGS="--stack-yaml=stack-lts-7.yaml"
     compiler: ": #stack 8.0.1 osx"
     os: osx
 
@@ -132,8 +139,6 @@ install:
       # This should be resolved (and removed) by Stack 1.6
       # Follows from https://github.com/commercialhaskell/stack/issues/3178
       stack --system-ghc --no-terminal install happy
-      
-      stack --system-ghc --no-terminal install hlint
       ;;
     stack)
       stack --no-terminal --install-ghc test --bench --only-dependencies $ARGS
@@ -155,10 +160,9 @@ script:
   set -ex
   case "$BUILD" in
     style)
-      hlint src/
-      hlint tests/
-      hlint bench/
-      stack --system-ghc --no-terminal build --pedantic
+      curl -sL https://raw.github.com/ndmitchell/hlint/master/misc/travis.sh | sh -s src/ tests/ bench/ examples/
+      stack --system-ghc --no-terminal build --test --bench --no-run-tests --no-run-benchmarks --pedantic
+      cabal check
       ;;
     stack)
       stack --no-terminal test --bench --no-run-benchmarks --haddock --no-haddock-deps $ARGS
