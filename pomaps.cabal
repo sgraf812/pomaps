@@ -28,9 +28,9 @@ source-repository head
   type: git
   location: https://github.com/sgraf812/pomaps
 
-flag use-lattices
-  description: Depend on the lattices package for the PartialOrd class.
-  default: True
+flag no-lattices
+  description: Don't depend on the lattices package and extract the PartialOrd class.
+  default: False
 
 library
   hs-source-dirs:
@@ -46,7 +46,7 @@ library
     -- Data.Map.Internal is only available since 0.5.9,
     -- of which 0.5.9.2 is the first safe version
     , containers >= 0.5.9.2 && <= 0.5.10.2
-  if flag(use-lattices)
+  if !flag(no-lattices)
     build-depends: 
     -- We need PartialOrd instances for ()
       lattices >= 1.7 && < 2
@@ -56,7 +56,7 @@ library
       Data.POMap.Strict
       Data.POSet
       Data.POSet.Internal
-  if !flag(use-lattices)
+  if flag(no-lattices)
     hs-source-dirs:
       lattices
     exposed-modules:
@@ -77,7 +77,7 @@ test-suite unittests
     , tasty-hspec
     , tasty-quickcheck
     , ChasingBottoms
-  if flag(use-lattices)
+  if !flag(no-lattices)
     build-depends: 
       lattices < 2
   other-modules:

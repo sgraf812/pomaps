@@ -63,7 +63,7 @@ matrix:
     addons: {apt: {packages: [libgmp-dev]}}
 
   # Check that the build succeeds when not depending on `lattices`
-  - env: BUILD=stack ARGS="--flag pomaps:-use-lattices"
+  - env: BUILD=stack ARGS="--flag pomaps:no-lattices"
     compiler: ": #stack default without lattices"
     addons: {apt: {packages: [libgmp-dev]}}
 
