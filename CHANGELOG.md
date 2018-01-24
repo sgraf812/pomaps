@@ -1,7 +1,7 @@
 # Change log
 
-`pomaps` follows the [PVP][].
-The change log is available through the [releases on GitHub][].
+`pomaps` follows the [PVP][1].
+The change log is available [on GitHub][2].
 
-[PVP]: https://pvp.haskell.org/
-[releases on GitHub]: https://github.com/sgraf812/pomaps/releases
+[1]: https://pvp.haskell.org/
+[2]: https://github.com/sgraf812/pomaps/releases
