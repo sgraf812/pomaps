@@ -45,7 +45,7 @@ library
     -- so we have to track development real close.
     -- Data.Map.Internal is only available since 0.5.9,
     -- of which 0.5.9.2 is the first safe version
-    , containers >= 0.5.9.2 && <= 0.5.10.2
+    , containers >= 0.5.9.2 && <= 0.5.11.0
   if !flag(no-lattices)
     build-depends: 
     -- We need PartialOrd instances for ()
