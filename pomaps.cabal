@@ -1,5 +1,5 @@
 name:           pomaps
-version:        0.0.0.2
+version:        0.0.0.3
 synopsis:       Maps and sets of partial orders
 category:       Data Structures
 homepage:       https://github.com/sgraf812/pomaps#readme
