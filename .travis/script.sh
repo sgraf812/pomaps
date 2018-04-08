@@ -12,6 +12,10 @@ case "$BUILD" in
     stack --no-terminal test --bench --no-run-benchmarks --haddock --no-haddock-deps --haddock-hyperlink-source $ARGS
     ;;
   cabal)
+    # Get the list of packages from the stack.yaml file
+    # But ignore packages in .stack-work (such as extra-deps)
+    PACKAGES=$(stack --install-ghc query locals | grep '^ *path' | sed 's@^ *path:@@' | xargs -d "\n" -I{} bash -c "! [[ '{}' =~ \\.stack-work ]] && echo '{}'" | tr -d '[:space:]')
+
     cabal install --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
 
     ORIGDIR=$(pwd)
