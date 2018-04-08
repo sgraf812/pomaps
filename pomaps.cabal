@@ -73,8 +73,8 @@ test-suite unittests
       base
     , containers >= 0.5.9.2
     , pomaps
-    , tasty
-    , tasty-hspec
+    , tasty >= 1.0
+    , tasty-hspec >= 1.1
     , tasty-quickcheck
     , ChasingBottoms
   if !flag(no-lattices)
