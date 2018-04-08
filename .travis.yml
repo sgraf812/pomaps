@@ -24,7 +24,7 @@ cache:
 
 env:
   global:
-  - ENCRYPTION_LABEL: "8a44b50cd00b"
+  - ENCRYPTION_LABEL: "c5ebace4dbe8"
   - COMMIT_AUTHOR_EMAIL: "sgraf1337@gmail.com"
 
 # The different configurations we want to test. We have BUILD=cabal which uses
