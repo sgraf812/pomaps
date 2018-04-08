@@ -73,7 +73,7 @@ test-suite unittests
       base
     , containers >= 0.5.9.2
     , pomaps
-    , tasty >= 1.0
+    , tasty >= 0.11
     , tasty-hspec >= 1.1
     , tasty-quickcheck
     , ChasingBottoms
