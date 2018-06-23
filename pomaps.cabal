@@ -42,10 +42,10 @@ library
     , ghc-prim >= 0.4 && < 0.6
     , deepseq >= 1.1 && < 1.5
     -- We depend on the internal modules of containers, 
-    -- so we have to track development real close.
+    -- so we have to track development really close.
     -- Data.Map.Internal is only available since 0.5.9,
     -- of which 0.5.9.2 is the first safe version
-    , containers >= 0.5.9.2 && <= 0.5.11.0
+    , containers >= 0.5.9.2 && <= 0.6.0.1
   if !flag(no-lattices)
     build-depends: 
     -- We need PartialOrd instances for ()
