@@ -1143,7 +1143,7 @@ dropWhileAntitone p = mkPOMap . fmap (Map.Strict.dropWhileAntitone p) . chainDec
 -- @j \< k ==\> p j \>= p k@.
 --
 -- @
--- spanAntitone p xs = partitionWithKey (\k _ -> p k) xs
+-- spanAntitone p xs = 'partitionWithKey' (\k _ -> p k) xs
 -- @
 --
 -- Note: if @p@ is not actually antitone, then @spanAntitone@ will split the map

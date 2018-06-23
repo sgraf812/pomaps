@@ -273,6 +273,47 @@ partition :: (k -> Bool) -> POSet k -> (POSet k, POSet k)
 partition f = coerce (POMap.partitionWithKey @_ @() (\k _ -> f k))
 {-# INLINE partition #-}
 
+-- | \(\mathcal{O}(log n)\). Take while a predicate on the keys holds.
+-- The user is responsible for ensuring that for all elements @j@ and @k@ in the set,
+-- @j \< k ==\> p j \>= p k@. See note at 'spanAntitone'.
+--
+-- @
+-- takeWhileAntitone p = 'filter' p
+-- @
+--
+-- @since 0.0.1.0
+takeWhileAntitone :: (k -> Bool) -> POSet k -> POSet k
+takeWhileAntitone = coerce (POMap.takeWhileAntitone @_ @())
+
+-- | \(\mathcal{O}(log n)\). Drop while a predicate on the keys holds.
+-- The user is responsible for ensuring that for all elements @j@ and @k@ in the set,
+-- @j \< k ==\> p j \>= p k@. See note at 'spanAntitone'.
+--
+-- @
+-- dropWhileAntitone p = 'filter' (not . p)
+-- @
+--
+-- @since 0.0.1.0
+dropWhileAntitone :: (k -> Bool) -> POSet k -> POSet k
+dropWhileAntitone = coerce (POMap.dropWhileAntitone @_ @())
+
+-- | \(\mathcal{O}(log n)\). Divide a set at the point where a predicate on the keys stops holding.
+-- The user is responsible for ensuring that for all elements @j@ and @k@ in the set,
+-- @j \< k ==\> p j \>= p k@.
+--
+-- @
+-- spanAntitone p xs = 'partition' p xs
+-- @
+--
+-- Note: if @p@ is not actually antitone, then @spanAntitone@ will split the set
+-- at some /unspecified/ point where the predicate switches from holding to not
+-- holding (where the predicate is seen to hold before the first element and to fail
+-- after the last element).
+--
+-- @since 0.0.1.0
+spanAntitone :: (k -> Bool) -> POSet k -> (POSet k, POSet k)
+spanAntitone = coerce (POMap.spanAntitone @_ @())
+
 --
 -- * Map
 --
