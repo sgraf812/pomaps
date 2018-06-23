@@ -399,6 +399,18 @@ spec =
       let p k v = odd (unDiv k + v)
       it "partitionWithKey p = filterWithKey p &&& filterWithKey ((not .) . p)" $ property $ \(m :: DivMap Integer) ->
         partitionWithKey p m `shouldBe` (filterWithKey p &&& filterWithKey ((not .) . p)) m
+    describe "takeWhileAntitone" $ do
+      let p k = unDiv k < 50
+      it "takeWhileAntitone p = filterWithKey (\\k _ -> p k)" $ property $ \(m :: DivMap Int) ->
+        takeWhileAntitone p m `shouldBe` filterWithKey (\k _ -> p k) m
+    describe "dropWhileAntitone" $ do
+      let p k = unDiv k < 50
+      it "dropWhileAntitone p = filterWithKey (\\k _ -> not (p k))" $ property $ \(m :: DivMap Int) ->
+        dropWhileAntitone p m `shouldBe` filterWithKey (\k _ -> not (p k)) m
+    describe "spanAntitone" $ do
+      let p k = unDiv k < 50
+      it "spanAntitone p = partitionWithKey (\\k _ -> p k)" $ property $ \(m :: DivMap Int) ->
+        spanAntitone p m `shouldBe` partitionWithKey (\k _ -> p k) m
     describe "mapMaybe" $ do
       let f v = if odd v then Just (v + 1) else Nothing
       it "mapMaybe f = fromList . Maybe.mapMaybe (traverse f) . toList" $ property $ \(m :: DivMap Int) ->
