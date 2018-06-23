@@ -1114,6 +1114,47 @@ partitionWithKey p (POMap _ d)
   . fmap (Map.partitionWithKey p)
   $ d
 
+-- | \(\mathcal{O}(log n)\). Take while a predicate on the keys holds.
+-- The user is responsible for ensuring that for all keys @j@ and @k@ in the map,
+-- @j \< k ==\> p j \>= p k@. See note at 'spanAntitone'.
+--
+-- @
+-- takeWhileAntitone p = 'filterWithKey' (\k _ -> p k)
+-- @
+--
+-- @since 0.0.1.0
+takeWhileAntitone :: (k -> Bool) -> POMap k v -> POMap k v
+takeWhileAntitone p = mkPOMap . fmap (Map.Strict.takeWhileAntitone p) . chainDecomposition
+
+-- | \(\mathcal{O}(log n)\). Drop while a predicate on the keys holds.
+-- The user is responsible for ensuring that for all keys @j@ and @k@ in the map,
+-- @j \< k ==\> p j \>= p k@. See note at 'spanAntitone'.
+--
+-- @
+-- dropWhileAntitone p = 'filterWithKey' (\k -> not (p k))
+-- @
+--
+-- @since 0.0.1.0
+dropWhileAntitone :: (k -> Bool) -> POMap k v -> POMap k v
+dropWhileAntitone p = mkPOMap . fmap (Map.Strict.dropWhileAntitone p) . chainDecomposition
+
+-- | \(\mathcal{O}(log n)\). Divide a map at the point where a predicate on the keys stops holding.
+-- The user is responsible for ensuring that for all keys @j@ and @k@ in the map,
+-- @j \< k ==\> p j \>= p k@.
+--
+-- @
+-- spanAntitone p xs = partition p xs
+-- @
+--
+-- Note: if @p@ is not actually antitone, then @spanAntitone@ will split the map
+-- at some /unspecified/ point where the predicate switches from holding to not
+-- holding (where the predicate is seen to hold before the first key and to fail
+-- after the last key).
+--
+-- @since 0.0.1.0
+spanAntitone :: (k -> Bool) -> POMap k v -> (POMap k v, POMap k v)
+spanAntitone p = (mkPOMap *** mkPOMap) . unzip . fmap (Map.Strict.spanAntitone p) . chainDecomposition
+
 mapMaybe :: SingIAreWeStrict s => Proxy# s -> (a -> Maybe b) -> POMap k a -> POMap k b
 mapMaybe s f = mapMaybeWithKey s (const f)
 {-# INLINABLE mapMaybe #-}

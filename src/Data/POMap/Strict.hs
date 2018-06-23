@@ -175,6 +175,10 @@ module Data.POMap.Strict (
   , Impl.partition
   , Impl.partitionWithKey
 
+  , Impl.takeWhileAntitone
+  , Impl.dropWhileAntitone
+  , Impl.spanAntitone
+
   , mapMaybe
   , mapMaybeWithKey
   , mapEither

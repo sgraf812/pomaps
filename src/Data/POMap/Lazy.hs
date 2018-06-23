@@ -171,6 +171,10 @@ module Data.POMap.Lazy (
   , Impl.partition
   , Impl.partitionWithKey
 
+  , Impl.takeWhileAntitone
+  , Impl.dropWhileAntitone
+  , Impl.spanAntitone
+
   , mapMaybe
   , mapMaybeWithKey
   , mapEither
