@@ -1113,7 +1113,7 @@ partitionWithKey p (POMap _ d)
   . fmap (Map.partitionWithKey p)
   $ d
 
--- | \(\mathcal{O}(log n)\). Take while a predicate on the keys holds.
+-- | \(\mathcal{O}(\log n)\). Take while a predicate on the keys holds.
 -- The user is responsible for ensuring that for all keys @j@ and @k@ in the map,
 -- @j \< k ==\> p j \>= p k@. See note at 'spanAntitone'.
 --
@@ -1125,7 +1125,7 @@ partitionWithKey p (POMap _ d)
 takeWhileAntitone :: (k -> Bool) -> POMap k v -> POMap k v
 takeWhileAntitone p = mkPOMap . fmap (Map.Strict.takeWhileAntitone p) . chainDecomposition
 
--- | \(\mathcal{O}(log n)\). Drop while a predicate on the keys holds.
+-- | \(\mathcal{O}(\log n)\). Drop while a predicate on the keys holds.
 -- The user is responsible for ensuring that for all keys @j@ and @k@ in the map,
 -- @j \< k ==\> p j \>= p k@. See note at 'spanAntitone'.
 --
