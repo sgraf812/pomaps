@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections    #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies     #-}
 
@@ -54,8 +55,7 @@ instance Show a => Show (POSet a) where
 instance (Read a, PartialOrd a) => Read (POSet a) where
   readPrec = parens $ prec 10 $ do
     Ident "fromList" <- lexP
-    xs <- readPrec
-    return (fromList xs)
+    fromList <$> readPrec
 
   readListPrec = readListPrecDefault
 
@@ -393,5 +393,5 @@ toList = coerce (POMap.keys @_ @())
 -- | \(\mathcal{O}(wn\log n)\).
 -- Build a set from a list of keys.
 fromList :: (PartialOrd k) => [k] -> POSet k
-fromList = coerce (POMap.fromList @_ @()) . List.map (\k -> (k, ()))
+fromList = coerce (POMap.fromList @_ @()) . List.map (, ()))
 {-# INLINE fromList #-}

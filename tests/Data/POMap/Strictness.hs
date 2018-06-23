@@ -19,7 +19,7 @@ import           Test.Tasty.QuickCheck
 type DivMap v = L.POMap Divisibility v
 
 instance {-# OVERLAPPING #-} Eq v => Eq (DivMap v) where
-  (==) = (==) `on` List.sortBy (comparing (unDiv . fst)) . toList
+  (==) = (==) `on` List.sortOn (unDiv . fst) . toList
 
 shouldBeBottom :: a -> Expectation
 shouldBeBottom x = isBottom x `shouldBe` True

@@ -29,7 +29,7 @@ import           Test.Tasty.QuickCheck
 type DivMap v = POMap Divisibility v
 
 instance {-# OVERLAPPING #-} Eq v => Eq (DivMap v) where
-  (==) = (==) `on` List.sortBy (comparing (unDiv . fst)) . toList
+  (==) = (==) `on` List.sortOn (unDiv . fst) . toList
 
 div' :: Int -> DivMap Integer
 div' = fromList . divisibility
@@ -52,7 +52,7 @@ makeEntries :: [Integer] -> [(Divisibility, Integer)]
 makeEntries = fmap (Div &&& id)
 
 shouldBeSameEntries :: (Eq v, Show v) => [(Divisibility, v)] -> [(Divisibility, v)] -> Expectation
-shouldBeSameEntries = shouldBe `on` List.sortBy (comparing (unDiv . fst))
+shouldBeSameEntries = shouldBe `on` List.sortOn (unDiv . fst)
 
 isAntichain :: PartialOrd k => [k] -> Bool
 isAntichain []     = True

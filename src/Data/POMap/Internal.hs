@@ -103,8 +103,7 @@ instance (Show k, Show v) => Show (POMap k v) where
 instance (PartialOrd k, Read k, Read e) => Read (POMap k e) where
   readPrec = parens $ prec 10 $ do
     Ident "fromList" <- lexP
-    xs <- readPrec
-    return (fromListImpl (proxy# :: Proxy# 'Lazy) xs)
+    fromListImpl (proxy# :: Proxy# 'Lazy) <$> readPrec
 
   readListPrec = readListPrecDefault
 
