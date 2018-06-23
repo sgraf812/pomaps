@@ -17,7 +17,6 @@ import           Data.Functor.Identity
 import qualified Data.List               as List
 import qualified Data.Maybe              as Maybe
 import           Data.Monoid             (Dual (..), Endo (..), Sum (..))
-import           Data.Ord                (comparing)
 import           Data.POMap.Arbitrary    ()
 import           Data.POMap.Divisibility
 import           Data.POMap.Lazy
