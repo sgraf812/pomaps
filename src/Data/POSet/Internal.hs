@@ -393,5 +393,5 @@ toList = coerce (POMap.keys @_ @())
 -- | \(\mathcal{O}(wn\log n)\).
 -- Build a set from a list of keys.
 fromList :: (PartialOrd k) => [k] -> POSet k
-fromList = coerce (POMap.fromList @_ @()) . List.map (, ()))
+fromList = coerce (POMap.fromList @_ @()) . List.map (, ())
 {-# INLINE fromList #-}

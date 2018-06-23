@@ -19,7 +19,7 @@ description:
   Maps (and sets) indexed by keys satisfying <https://hackage.haskell.org/package/lattices/docs/Algebra-PartialOrd.html#t:PartialOrd PartialOrd>.
   .
   The goal is to provide asymptotically better data structures than simple association lists or lookup tables.
-  Asymptotics depend on the partial order used as keys, its /width/ \(w\) specifically (the size of the biggest anti-chain).
+  Asymptotics depend on the partial order used as keys, its width /w/ specifically (the size of the biggest anti-chain).
   .
   For partial orders of great width, this package won't provide any benefit over using association lists, so benchmark for your use-case!
 
