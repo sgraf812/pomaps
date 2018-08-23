@@ -390,7 +390,7 @@ spec =
         let lin = toLinearisation m
         let greqs = zipWith (\(k1, _) (k2, _) -> (k2 `leq` k1) && k1 /= k2) lin (drop 1 lin)
         or greqs `shouldBe` False
-    describe "fromLinearisation" $ do
+    describe "fromLinearisation" $
       it "fromLinearisation . toLinearisation = id" $ property $ \(m :: DivMap Int) ->
         fromLinearisation (toLinearisation m) `shouldBe` m
 
