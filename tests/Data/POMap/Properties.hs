@@ -383,6 +383,16 @@ spec =
       let f k old new = unDiv k + old + new
       it "fromListWithKey f = foldl (\\m (k,v) -> insertWithKey f k v m) empty" $ property $ \(xs :: [(Divisibility, Integer)]) ->
         fromListWithKey f xs `shouldBe` foldl (\m (k,v) -> insertWithKey f k v m) empty xs
+    describe "toLinearisation" $ do
+      it "fromList . toLinearisation = id" $ property $ \(m :: DivMap Int) ->
+        fromList (toLinearisation m) `shouldBe` m
+      it "is a linearisation" $ property $ \(m :: DivMap Int) -> do
+        let lin = toLinearisation m
+        let greqs = zipWith (\(k1, _) (k2, _) -> (k2 `leq` k1) && k1 /= k2) lin (drop 1 lin)
+        or greqs `shouldBe` False
+    describe "fromLinearisation" $ do
+      it "fromLinearisation . toLinearisation = id" $ property $ \(m :: DivMap Int) ->
+        fromLinearisation (toLinearisation m) `shouldBe` m
 
     describe "filter" $
       it "filter p = fromList . filter (p . snd) . toList" $ property $ \(m :: DivMap Int) ->

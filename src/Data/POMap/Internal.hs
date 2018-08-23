@@ -18,6 +18,8 @@ import           Algebra.PartialOrd
 import           Control.Arrow      (first, second, (***))
 import           Control.DeepSeq    (NFData (rnf))
 import qualified Data.List          as List
+import           Data.List.NonEmpty      (NonEmpty (..))
+import qualified Data.List.NonEmpty      as NonEmpty
 import           Data.Map.Internal  (AreWeStrict (..), Map (..))
 import qualified Data.Map.Internal  as Map
 import qualified Data.Map.Lazy      as Map.Lazy
@@ -1032,6 +1034,43 @@ assocs = concatMap Map.toList . chainDecomposition
 -- Currently, @toList = 'assocs'@.
 toList :: POMap k v -> [(k, v)]
 toList = assocs
+
+-- | \(\mathcal{O}(w^2n)\).
+-- Return all key\/value pairs in the map such that
+-- @map fst (toLinearisation m)@ is a /linearisation/ of the all keys present in
+-- the map.
+-- E.g., for any key @k1@ occuring before @k2@ in the linearisation, it
+-- cannot happen that @k1@ is strictly greater than @k2@ (so they are either
+-- incomparable or @k1 <= k2@).
+toLinearisation :: PartialOrd k => POMap k v -> [(k, v)]
+-- TODO: fusion? I'm not sure it's possible due to @dedupAntichain@
+toLinearisation = concatLevels . fmap Map.toAscList . chainDecomposition
+  where
+    concatLevels [] = []
+    concatLevels chains
+      | (sinks, chains') <- findSinks chains
+      = sinks ++ concatLevels chains'
+
+    findSinks chains =
+      let nonEmpties = Maybe.mapMaybe NonEmpty.nonEmpty chains
+          heads = NonEmpty.head <$> nonEmpties
+          sinks = dedupAntichain LessThan heads
+          chains' = deleteHead sinks <$> nonEmpties
+      in (sinks, chains')
+
+    deleteHead sinks (cur@(k, _) :| chain)
+      | Just _ <- List.lookup k sinks = chain
+      | otherwise = cur:chain
+{-# INLINABLE toLinearisation #-}
+
+fromLinearisation :: (PartialOrd k, SingIAreWeStrict s) => Proxy# s -> [(k, v)] -> POMap k v
+-- TODO: We could possibly take advantage by using fromAscList to construct the
+-- chains in O(wn), but I don't know of a good way to split into anti-chains
+-- before.
+fromLinearisation = fromListImpl
+{-# INLINABLE fromLinearisation #-}
+{-# SPECIALIZE fromLinearisation :: PartialOrd k => Proxy# 'Strict -> [(k, v)] -> POMap k v #-}
+{-# SPECIALIZE fromLinearisation :: PartialOrd k => Proxy# 'Lazy -> [(k, v)] -> POMap k v #-}
 
 -- TODO: keysSet, fromSet
 

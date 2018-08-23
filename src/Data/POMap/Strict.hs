@@ -167,6 +167,8 @@ module Data.POMap.Strict (
   , fromList
   , fromListWith
   , fromListWithKey
+  , Impl.toLinearisation
+  , fromLinearisation
 
   -- * Filter
   , Impl.filter
@@ -531,6 +533,14 @@ fromListWith = Impl.fromListWith (proxy# :: Proxy# 'Strict)
 fromListWithKey :: PartialOrd k => (k -> v -> v -> v) -> [(k, v)] -> POMap k v
 fromListWithKey = Impl.fromListWithKey (proxy# :: Proxy# 'Strict)
 {-# INLINE fromListWithKey #-}
+
+-- | \(\mathcal{O}(wn\log n)\).
+-- Build a map from a linearisation of key\/value pairs.
+-- If the list contains more than one value for the same key, the last value
+-- for the key is retained.
+fromLinearisation :: PartialOrd k => [(k, v)] -> POMap k v
+fromLinearisation = Impl.fromLinearisation (proxy# :: Proxy# 'Strict)
+{-# INLINE fromLinearisation #-}
 
 -- | \(\mathcal{O}(n)\). Map a function over all values in the map.
 --
