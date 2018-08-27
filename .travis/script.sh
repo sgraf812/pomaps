@@ -27,7 +27,8 @@ case "$BUILD" in
       cd "$PKGVER"
       cabal configure --enable-tests --ghc-options=-O0
       cabal build --ghc-options=-O0
-      cabal test --ghc-options=-O0
+      # streaming, because otherwise the test suite times out travis
+      cabal test --ghc-options=-O0 --show-details=streaming
       cd $ORIGDIR
     done
     ;;
