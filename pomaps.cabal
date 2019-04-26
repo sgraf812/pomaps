@@ -1,5 +1,5 @@
 name:           pomaps
-version:        0.0.2.0
+version:        0.0.2.1
 synopsis:       Maps and sets of partial orders
 category:       Data Structures
 homepage:       https://github.com/sgraf812/pomaps#readme
@@ -36,19 +36,19 @@ library
       src
   ghc-options: -Wall
   build-depends:
-      base >= 4.6.0.0 && < 4.12
+      base >= 4.6.0.0
     -- oneShot
     , ghc-prim >= 0.4 && < 0.6
     , deepseq >= 1.1 && < 1.5
-    -- We depend on the internal modules of containers, 
+    -- We depend on the internal modules of containers,
     -- so we have to track development really close.
     -- Data.Map.Internal is only available since 0.5.9,
     -- of which 0.5.9.2 is the first safe version
     , containers >= 0.5.9.2 && <= 0.6.0.1
   if !flag(no-lattices)
-    build-depends: 
+    build-depends:
     -- We need PartialOrd instances for ()
-      lattices >= 1.7 && < 2
+      lattices >= 1.7
   exposed-modules:
       Data.POMap.Internal
       Data.POMap.Lazy
@@ -77,7 +77,7 @@ test-suite unittests
     , tasty-quickcheck
     , ChasingBottoms
   if !flag(no-lattices)
-    build-depends: 
+    build-depends:
       lattices < 2
   other-modules:
       Data.POMap.Arbitrary
@@ -89,10 +89,10 @@ test-suite unittests
 test-suite doctests
   type: exitcode-stdio-1.0
   main-is: doctest-driver.hs
-  hs-source-dirs:     
+  hs-source-dirs:
       tests
   ghc-options: -threaded
-  build-depends:      
+  build-depends:
       base >4 && <5
     , doctest
     , Glob
@@ -112,7 +112,7 @@ benchmark pomaps-benchmarks
     , random
     , vector
   if !flag(no-lattices)
-    build-depends: 
+    build-depends:
       lattices < 2
   default-language: Haskell2010
 
