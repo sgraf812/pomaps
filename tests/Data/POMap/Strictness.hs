@@ -160,9 +160,9 @@ spec =
 
     describe "type class instances" $ do
       describe "Functor" $ do
-        describe "fmap" $
+        describe "<$>" $
           it "always lazy" $ property $ \(m :: DivMap Int) ->
-            shouldNotBeBottom (bottom <$ m)
+            shouldNotBeBottom (const bottom <$> m)
         describe "<$" $
           it "always lazy" $ property $ \(m :: DivMap Int) ->
             shouldNotBeBottom (bottom <$ m)

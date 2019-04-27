@@ -52,10 +52,10 @@
 # - ignore: {name: Use const, within: SpecialModule} # Only within certain modules
 - ignore:
     name: Avoid lambda
-    within: 
+    within:
     - Data.POMap.Internal.alterChain
     - Data.POMap.Internal.alterLookupChain
-- ignore: 
+- ignore:
     name: Eta reduce
     within: Data.POMap.Internal.alterF
 - ignore: # This happens in top-level RULE pragmas, a bug in hlint
@@ -69,6 +69,9 @@
     within: Data.POMap.Properties
 - ignore:
     name: Use fold # We want to test these, so it makes no sense to reduce
+    within: Data.POMap.Properties
+- ignore:
+    name: Use <$ # We want to test these, so it makes no sense to reduce
     within: Data.POMap.Properties
 - ignore:
     name: Unnecessary hiding # We need to hide Prelude.filter because of doctests
