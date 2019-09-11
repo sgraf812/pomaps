@@ -4,12 +4,13 @@ synopsis:       Maps and sets of partial orders
 category:       Data Structures
 homepage:       https://github.com/sgraf812/pomaps#readme
 bug-reports:    https://github.com/sgraf812/pomaps/issues
+author:         Sebastian Graf <sgraf1337@gmail.com>
 maintainer:     Sebastian Graf <sgraf1337@gmail.com>
 license:        MIT
 license-file:   LICENSE.md
 build-type:     Simple
 cabal-version:  >= 1.10
-tested-with:    GHC ==8.8.1 || GHC ==8.6.5 || ==8.4.4 || ==8.2.2
+-- tested-with:    GHC ==8.8.1 || GHC ==8.6.5 || ==8.4.4 || ==8.2.2 -- Not recognized by all Cabal versions. The resulting warning disturbs CI
 
 extra-source-files:
     CHANGELOG.md
