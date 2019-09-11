@@ -21,7 +21,6 @@ import           Text.Read          (Lexeme (Ident), Read (..), lexP, parens,
 -- This is some setup code for @doctest@.
 -- >>> :set -XGeneralizedNewtypeDeriving
 -- >>> import           Algebra.PartialOrd
--- >>> import           Data.POSet
 -- >>> :{
 --   newtype Divisibility
 --     = Div Int

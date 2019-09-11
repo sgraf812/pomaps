@@ -206,7 +206,6 @@ import           Prelude             hiding (map)
 -- This is some setup code for @doctest@.
 -- >>> :set -XGeneralizedNewtypeDeriving
 -- >>> import           Algebra.PartialOrd
--- >>> import           Data.POMap.Strict
 -- >>> :{
 --   newtype Divisibility
 --     = Div Int
