@@ -56,6 +56,10 @@ matrix:
     compiler: ": #GHC 8.6.5"
     addons: {apt: {packages: [cabal-install-2.4,ghc-8.6.5,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
 
+  - env: BUILD=cabal GHCVER=8.8.1 CABALVER=3.0 HAPPYVER=1.19.11 ALEXVER=3.2.4
+    compiler: ": #GHC 8.6.5"
+    addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.1,happy-1.19.11,alex-3.2.4], sources: [hvr-ghc]}}
+
   # Build with the newest GHC and cabal-install. This is an accepted failure,
   # see below.
   - env: BUILD=cabal GHCVER=head  CABALVER=head HAPPYVER=1.19.5 ALEXVER=3.1.7
@@ -80,15 +84,10 @@ matrix:
     compiler: ": #stack 8.4.4"
     addons: {apt: {packages: [libgmp-dev]}}
 
-  # Check that the build succeeds when not depending on `lattices`
-  - env: BUILD=stack ARGS="--flag pomaps:no-lattices"
-    compiler: ": #stack default without lattices"
-    addons: {apt: {packages: [libgmp-dev]}}
-
   # This just checks style rules
-  - env: BUILD=style GHCVER=8.6.4
-    compiler: ": #stack 8.6.4 style"
-    addons: {apt: {packages: [cabal-install-2.4,ghc-8.6.4,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  - env: BUILD=style GHCVER=8.8.1
+    compiler: ": #stack 8.8.1 style"
+    addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.1,happy-1.19.11,alex-3.2.4], sources: [hvr-ghc]}}
 
   # Nightly builds are allowed to fail
   - env: BUILD=stack ARGS="--resolver nightly"

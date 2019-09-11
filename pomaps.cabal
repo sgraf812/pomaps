@@ -26,6 +26,7 @@ description:
 source-repository head
   type: git
   location: https://github.com/sgraf812/pomaps
+  tested-with: GHC ==8.8.1 || GHC ==8.6.5 || ==8.4.4 || ==8.2.2 || ==8.0.2
 
 flag no-lattices
   description: Don't depend on the lattices package and extract the PartialOrd class.
@@ -44,7 +45,7 @@ library
     -- so we have to track development really close.
     -- Data.Map.Internal is only available since 0.5.9,
     -- of which 0.5.9.2 is the first safe version
-    , containers >= 0.5.9.2 && <= 0.6.0.1
+    , containers >= 0.5.9.2 && <= 0.6.2.1
   if !flag(no-lattices)
     build-depends:
     -- We need PartialOrd instances for ()
@@ -61,6 +62,7 @@ library
     exposed-modules:
       Algebra.PartialOrd
   default-language: Haskell2010
+  other-extensions: TypeApplications
 
 test-suite unittests
   type: exitcode-stdio-1.0
@@ -78,7 +80,7 @@ test-suite unittests
     , ChasingBottoms
   if !flag(no-lattices)
     build-depends:
-      lattices < 2
+      lattices
   other-modules:
       Data.POMap.Arbitrary
       Data.POMap.Divisibility
@@ -113,7 +115,7 @@ benchmark pomaps-benchmarks
     , vector
   if !flag(no-lattices)
     build-depends:
-      lattices < 2
+      lattices
   default-language: Haskell2010
 
 
