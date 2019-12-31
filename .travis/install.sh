@@ -2,7 +2,7 @@
 
 echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
 
-if [ -f configure.ac ]; then 
+if [ -f configure.ac ]; then
   autoreconf -i
 fi
 
@@ -39,6 +39,6 @@ case "$BUILD" in
     cabal --version
     travis_retry cabal update
 
-    cabal install --only-dependencies --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
+    cabal install --only-dependencies --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
     ;;
 esac
