@@ -1,5 +1,5 @@
 name:           pomaps
-version:        0.0.2.2
+version: 0.1.0.0
 synopsis:       Maps and sets of partial orders
 category:       Data Structures
 homepage:       https://github.com/sgraf812/pomaps#readme
@@ -118,5 +118,3 @@ benchmark pomaps-benchmarks
     build-depends:
       lattices
   default-language: Haskell2010
-
-
