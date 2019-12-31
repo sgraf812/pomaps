@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Data.POMap.Properties where
 
@@ -437,7 +438,7 @@ spec =
           mapEither f m `shouldBe`
             ((fromList *** fromList)
             . Either.partitionEithers
-            . fmap (\(k, v) -> bimap ((,) k) ((,) k) (f v))
+            . fmap (\(k, v) -> bimap (k,) (k,) (f v))
             . toList)
             m
     describe "mapEitherWithKey" $ do
@@ -449,7 +450,7 @@ spec =
           mapEitherWithKey f m `shouldBe`
             ((fromList *** fromList)
             . Either.partitionEithers
-            . fmap (\(k, v) -> bimap ((,) k) ((,) k) (f k v))
+            . fmap (\(k, v) -> bimap (k,) (k,) (f k v))
             . toList)
             m
 

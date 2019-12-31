@@ -162,7 +162,7 @@ spec =
       describe "Functor" $ do
         describe "<$>" $
           it "always lazy" $ property $ \(m :: DivMap Int) ->
-            shouldNotBeBottom (const bottom <$> m)
+            shouldNotBeBottom (bottom <$ m)
         describe "<$" $
           it "always lazy" $ property $ \(m :: DivMap Int) ->
             shouldNotBeBottom (bottom <$ m)
