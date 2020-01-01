@@ -10,7 +10,7 @@ license:        MIT
 license-file:   LICENSE.md
 build-type:     Simple
 cabal-version:  >= 1.10
--- tested-with:    GHC ==8.8.1 || GHC ==8.6.5 || ==8.4.4 || ==8.2.2 -- Not recognized by all Cabal versions. The resulting warning disturbs CI
+tested-with:    GHC ==8.8.1 || ==8.6.5 || ==8.4.4 || ==8.2.2
 
 extra-source-files:
     CHANGELOG.md
