@@ -39,6 +39,6 @@ case "$BUILD" in
     cabal --version
     travis_retry cabal update
 
-    cabal install --only-dependencies --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
+    cabal build --only-dependencies --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
     ;;
 esac

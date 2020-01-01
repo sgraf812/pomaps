@@ -12,7 +12,7 @@ case "$BUILD" in
     stack --no-terminal test --bench --no-run-benchmarks --haddock --no-haddock-deps --haddock-hyperlink-source $ARGS
     ;;
   cabal)
-    cabal install --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
+    cabal build --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
 
     ORIGDIR=$(pwd)
     for dir in $PACKAGES
