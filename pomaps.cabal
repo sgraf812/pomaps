@@ -1,5 +1,5 @@
 name:           pomaps
-version: 0.1.0.0
+version:        0.2.0.0
 synopsis:       Maps and sets of partial orders
 category:       Data Structures
 homepage:       https://github.com/sgraf812/pomaps#readme
@@ -29,10 +29,6 @@ source-repository head
   type: git
   location: https://github.com/sgraf812/pomaps
 
-flag no-lattices
-  description: Don't depend on the lattices package and extract the PartialOrd class.
-  default: False
-
 library
   hs-source-dirs:
       src
@@ -47,21 +43,14 @@ library
     -- Data.Map.Internal is only available since 0.5.9,
     -- of which 0.5.9.2 is the first safe version
     , containers >= 0.5.9.2 && <= 0.6.2.1
-  if !flag(no-lattices)
-    build-depends:
-      -- We need PartialOrd instances for ()
-      lattices >= 1.7
+    -- We need PartialOrd instances for ()
+    , lattices >= 1.7
   exposed-modules:
       Data.POMap.Internal
       Data.POMap.Lazy
       Data.POMap.Strict
       Data.POSet
       Data.POSet.Internal
-  if flag(no-lattices)
-    hs-source-dirs:
-      lattices
-    exposed-modules:
-      Algebra.PartialOrd
   default-language: Haskell2010
   other-extensions: TypeApplications
 
@@ -79,9 +68,7 @@ test-suite unittests
     , tasty-hspec >= 1.1
     , tasty-quickcheck
     , ChasingBottoms
-  if !flag(no-lattices)
-    build-depends:
-      lattices
+    , lattices
   other-modules:
       Data.POMap.Arbitrary
       Data.POMap.Divisibility
@@ -114,7 +101,5 @@ benchmark pomaps-benchmarks
     , deepseq
     , random
     , vector
-  if !flag(no-lattices)
-    build-depends:
-      lattices
+    , lattices
   default-language: Haskell2010
