@@ -1,5 +1,5 @@
 name:           pomaps
-version:        0.2.0.0
+version:        0.2.0.1
 synopsis:       Maps and sets of partial orders
 category:       Data Structures
 homepage:       https://github.com/sgraf812/pomaps#readme
@@ -42,7 +42,7 @@ library
     -- so we have to track development really close.
     -- Data.Map.Internal is only available since 0.5.9,
     -- of which 0.5.9.2 is the first safe version
-    , containers >= 0.5.9.2 && <= 0.6.2.1
+    , containers >= 0.5.9.2 && <= 0.6.4.1
     -- We need PartialOrd instances for ()
     , lattices >= 1.7
   exposed-modules:
