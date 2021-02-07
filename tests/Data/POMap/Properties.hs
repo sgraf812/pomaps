@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -O0 -fno-warn-orphans #-}
 module Data.POMap.Properties where
 
 import           Algebra.PartialOrd
@@ -21,6 +21,7 @@ import           Data.Monoid             (Dual (..), Endo (..), Sum (..))
 import           Data.POMap.Arbitrary    ()
 import           Data.POMap.Divisibility
 import           Data.POMap.Lazy
+import qualified Data.POSet              as POSet
 import           Data.Traversable
 import           Prelude                 hiding (filter, lookup, map, max, null)
 import           Test.Tasty.Hspec
@@ -57,6 +58,11 @@ shouldBeSameEntries = shouldBe `on` List.sortOn (unDiv . fst)
 isAntichain :: PartialOrd k => [k] -> Bool
 isAntichain []     = True
 isAntichain (x:xs) = all (not . comparable x) xs && isAntichain xs
+
+newtype OrdInt = OrdInt Int deriving (Eq, Show)
+instance PartialOrd OrdInt where OrdInt sa `leq` OrdInt sb = sa <= sb
+instance Arbitrary OrdInt where
+  arbitrary = OrdInt <$> arbitrary
 
 spec :: Spec
 spec =
@@ -549,3 +555,20 @@ spec =
           fmap (+1) m `shouldBe` fmapDefault (+1) m
         it "foldMap = foldMapDefault" $ property $ \(m :: DivMap Int) ->
           foldMap Sum m `shouldBe` foldMapDefault Sum m
+
+    describe "regression tests" $ do
+      describe "#3" $ do
+        it "example 1" $ do
+          let e = OrdInt 13
+          let s1 = POSet.delete e $
+                   POSet.fromList [ OrdInt 0, OrdInt 32, e ]
+          let s2 = POSet.fromList [ OrdInt 0, OrdInt 32 ]
+          s1 `shouldBe` s2
+          length s1 `shouldBe` 2
+        it "example 2" $ do
+          let e = OrdInt 0
+          let s1 = POSet.delete e $
+                   POSet.fromList [ e, OrdInt 1 ]
+          let s2 = POSet.fromList [ OrdInt 1 ]
+          s1 `shouldBe` s2
+          length s1 `shouldBe` 1

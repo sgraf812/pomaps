@@ -577,7 +577,7 @@ alterChain s f k = go
       case (k `leq` k', k' `leq` k) of
         (True, True) -> Found $ case f k (Just v') of
           Just v  -> seq' s v (Bin n k' v l r)
-          Nothing -> Tip
+          Nothing -> Map.link2 l r
         (True, False)  -> oneShot (\l' -> Map.balanceL k' v' l' r) <$> go l
         (False, True)  -> oneShot (\r' -> Map.balanceR k' v' l r') <$> go r
         (False, False) -> Incomparable
@@ -615,7 +615,7 @@ alterLookupChain s f k = go
       case (k `leq` k', k' `leq` k) of
         (True, True) -> Found (Just v', case f k (Just v') of
           Just v  -> seq' s v (Bin n k' v l r)
-          Nothing -> Tip)
+          Nothing -> Map.link2 l r)
         (True, False)  -> second (oneShot (\l' -> Map.balanceL k' v' l' r)) <$> go l
         (False, True)  -> second (oneShot (\r' -> Map.balanceR k' v' l r')) <$> go r
         (False, False) -> Incomparable
@@ -672,7 +672,7 @@ alterFChain s k = go
         (True, True)   ->
           ret Found (Just v) . oneShot $ \case
             Just v' -> seq' s v' (Bin n k v' l r)
-            Nothing -> Tip
+            Nothing -> Map.link2 l r
         (True, False)  -> lift (go l) . oneShot $ \l' -> Map.balanceL k' v l' r
         (False, True)  -> lift (go r) . oneShot $ \r' -> Map.balanceL k' v l r'
         (False, False) -> Incomparable

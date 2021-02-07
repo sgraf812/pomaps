@@ -10,7 +10,7 @@ license:        MIT
 license-file:   LICENSE.md
 build-type:     Simple
 cabal-version:  >= 1.10
-tested-with:    GHC ==8.8.1 || ==8.6.5 || ==8.4.4 || ==8.2.2
+tested-with:    GHC ==9.0.1 || ==8.10.2 || ==8.8.4 || ==8.6.5 || ==8.4.4 || ==8.2.2
 
 extra-source-files:
     CHANGELOG.md
@@ -34,9 +34,9 @@ library
       src
   ghc-options: -Wall
   build-depends:
-      base >= 4.6.0.0 && < 4.14
+      base >= 4.6.0.0 && < 4.15
     -- oneShot
-    , ghc-prim >= 0.4 && < 0.6
+    , ghc-prim >= 0.4 && < 0.7
     , deepseq >= 1.1 && < 1.5
     -- We depend on the internal modules of containers,
     -- so we have to track development really close.
